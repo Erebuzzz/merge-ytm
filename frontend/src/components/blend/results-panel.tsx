@@ -37,7 +37,7 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
 
     setExportState({
       status: "submitting",
-      message: "Creating the private playlist on YouTube Music",
+      message: "Creating the private playlist on YouTube Music...",
     });
 
     try {
@@ -61,44 +61,63 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
-        <SectionCard eyebrow="Compatibility" title={`${blend.compatibilityScore.toFixed(1)}% overlap`}>
+    <div className="space-y-8 animate-fade-in-up">
+      {/* Top Banner Area mimicking Spotify Playlist Header */}
+      <div className="flex flex-col md:flex-row items-end gap-6 relative z-10 glass-panel p-8 rounded-[30px] border-l-4 border-l-brand-ytgradient2">
+        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-brand-spotify via-brand-ytmusic to-[#121212] shadow-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center mix-blend-overlay opacity-50">
+             <div className="w-full h-full bg-[radial-gradient(circle_at_center,white,transparent_80%)] mix-blend-color-dodge"></div>
+          </div>
+          <span className="text-6xl font-display font-black text-white mix-blend-overlay">{blend.compatibilityScore.toFixed(0)}%</span>
+        </div>
+        <div className="flex-1 text-white">
+          <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Blend Playlist</p>
+          <h1 className="text-5xl md:text-6xl font-display font-black mb-4 tracking-tight drop-shadow-md">
+            {blend.participants.userA.name} + {blend.participants.userB.name}
+          </h1>
+          <p className="text-sm font-medium text-text-secondary flex items-center gap-2">
+            <span className="text-brand-spotify font-semibold">{blend.compatibilityScore.toFixed(1)}% Match</span>
+            • {blend.sections.reduce((acc, curr) => acc + curr.tracks.length, 0)} songs
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-8 xl:grid-cols-[1.35fr_0.9fr]">
+        <SectionCard eyebrow="Diagnostics" title="Compatibility Breakdown">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl bg-[#f8efe5] px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d96e3d]">Shared tracks</p>
-              <p className="mt-3 text-3xl font-semibold text-[#1d1720]">{String(blend.diagnostics.commonCount ?? 0)}</p>
+            <div className="rounded-2xl bg-surface-highlight/40 border border-white/5 px-5 py-5 text-center flex flex-col justify-center transition-all hover:bg-surface-highlight/60">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-spotify mb-1">Shared</p>
+              <p className="text-4xl font-display font-bold text-white tracking-tighter">{String(blend.diagnostics.commonCount ?? 0)}</p>
             </div>
-            <div className="rounded-2xl bg-[#f8efe5] px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d96e3d]">Listener A pool</p>
-              <p className="mt-3 text-3xl font-semibold text-[#1d1720]">{String(blend.diagnostics.userACount ?? 0)}</p>
+            <div className="rounded-2xl bg-surface-highlight/40 border border-white/5 px-5 py-5 text-center flex flex-col justify-center transition-all hover:bg-surface-highlight/60">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-ytmusic mb-1">{blend.participants.userA.name} Pool</p>
+              <p className="text-4xl font-display font-bold text-white tracking-tighter">{String(blend.diagnostics.userACount ?? 0)}</p>
             </div>
-            <div className="rounded-2xl bg-[#f8efe5] px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d96e3d]">Listener B pool</p>
-              <p className="mt-3 text-3xl font-semibold text-[#1d1720]">{String(blend.diagnostics.userBCount ?? 0)}</p>
+            <div className="rounded-2xl bg-surface-highlight/40 border border-white/5 px-5 py-5 text-center flex flex-col justify-center transition-all hover:bg-surface-highlight/60">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-ytgradient2 mb-1">{blend.participants.userB.name} Pool</p>
+              <p className="text-4xl font-display font-bold text-white tracking-tighter">{String(blend.diagnostics.userBCount ?? 0)}</p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-4 text-sm leading-7 text-[#5d5257]">
-            Shared taste seeds the front of the playlist, then the two side sections pull in unique tracks that still map back to the common
-            center through artist similarity and diversity balancing.
+          <div className="mt-6 rounded-2xl bg-surface-elevated px-5 py-4 text-xs leading-relaxed text-text-secondary border-l-2 border-l-brand-spotify">
+            Shared taste seeds the front of the playlist, then the two side sections pull in unique tracks that still map back to the common center through artist similarity and diversity balancing.
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="Export" title="Push to YouTube Music">
-          <div className="space-y-4">
+        <SectionCard eyebrow="Export" title="Push to YT Music">
+          <div className="space-y-5">
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Export with</span>
+              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Export with</span>
               <select
                 value={selectedUserId}
                 onChange={(event) => setSelectedUserId(event.target.value)}
-                className="w-full rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d96e3d] focus:ring-2 focus:ring-[#d96e3d]/20"
+                className="w-full appearance-none rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
               >
-                <option value={blend.participants.userA.userId}>
+                <option value={blend.participants.userA.userId} className="bg-surface-elevated text-white">
                   {blend.participants.userA.name}
                   {blend.participants.userA.hasAuth ? "" : " (auth missing)"}
                 </option>
-                <option value={blend.participants.userB.userId}>
+                <option value={blend.participants.userB.userId} className="bg-surface-elevated text-white">
                   {blend.participants.userB.name}
                   {blend.participants.userB.hasAuth ? "" : " (auth missing)"}
                 </option>
@@ -108,78 +127,125 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
             <div className="grid gap-3 sm:grid-cols-2">
               <Link
                 href={`/auth-upload?userId=${blend.participants.userA.userId}`}
-                className="rounded-2xl border border-[#1d1720]/10 px-4 py-3 text-sm font-semibold transition hover:border-[#d96e3d] hover:text-[#d96e3d]"
+                className="rounded-xl border border-white/10 bg-surface-highlight/20 px-4 py-3 text-xs font-bold text-center text-text-secondary transition-colors hover:border-brand-spotify hover:text-white hover:bg-brand-spotify/10"
               >
                 Upload auth for {blend.participants.userA.name}
               </Link>
               <Link
                 href={`/auth-upload?userId=${blend.participants.userB.userId}`}
-                className="rounded-2xl border border-[#1d1720]/10 px-4 py-3 text-sm font-semibold transition hover:border-[#d96e3d] hover:text-[#d96e3d]"
+                className="rounded-xl border border-white/10 bg-surface-highlight/20 px-4 py-3 text-xs font-bold text-center text-text-secondary transition-colors hover:border-brand-spotify hover:text-white hover:bg-brand-spotify/10"
               >
                 Upload auth for {blend.participants.userB.name}
               </Link>
             </div>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Playlist title</span>
-              <input
-                value={playlistTitle}
-                onChange={(event) => setPlaylistTitle(event.target.value)}
-                className="w-full rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d96e3d] focus:ring-2 focus:ring-[#d96e3d]/20"
-              />
-            </label>
+            <div className="space-y-4 pt-2 border-t border-white/5">
+              <label className="block">
+                <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Playlist title</span>
+                <input
+                  value={playlistTitle}
+                  onChange={(event) => setPlaylistTitle(event.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
+                />
+              </label>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Description</span>
-              <textarea
-                value={playlistDescription}
-                onChange={(event) => setPlaylistDescription(event.target.value)}
-                rows={4}
-                className="w-full rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d96e3d] focus:ring-2 focus:ring-[#d96e3d]/20"
-              />
-            </label>
+              <label className="block">
+                <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Description</span>
+                <textarea
+                  value={playlistDescription}
+                  onChange={(event) => setPlaylistDescription(event.target.value)}
+                  rows={2}
+                  className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner resize-none"
+                />
+              </label>
+            </div>
 
             <button
               type="button"
               onClick={handleExport}
               disabled={exportState.status === "submitting"}
-              className="w-full rounded-full bg-[#1d1720] px-6 py-3 text-sm font-semibold text-[#f9f0e3] transition hover:bg-[#433645] disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-full bg-white px-6 py-3.5 text-sm font-bold text-black transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:bg-surface-border disabled:text-text-muted"
             >
-              {exportState.status === "submitting" ? "Creating playlist..." : "Create on YT Music"}
+              {exportState.status === "submitting" ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin"></span>
+                  Creating Playlist...
+                </span>
+              ) : "Create on YT Music"}
             </button>
 
             {exportState.message ? (
-              <p className={`text-sm ${exportState.status === "error" ? "text-[#b24d2c]" : "text-[#5d5257]"}`}>{exportState.message}</p>
+              <p className={`text-xs font-medium text-center p-2 rounded-lg ${exportState.status === "error" ? "bg-brand-ytred/10 text-brand-ytred border border-brand-ytred/20" : exportState.status === "success" ? "bg-brand-spotify/10 text-brand-spotify border border-brand-spotify/20" : "text-text-muted"}`}>
+                {exportState.message}
+              </p>
             ) : null}
-            {blend.youtubePlaylistId ? <p className="text-sm text-[#5f7757]">Existing playlist id: {blend.youtubePlaylistId}</p> : null}
+            {blend.youtubePlaylistId ? (
+              <p className="text-xs font-bold text-brand-spotify text-center uppercase tracking-wider">
+                ✓ Synced: {blend.youtubePlaylistId}
+              </p>
+            ) : null}
           </div>
         </SectionCard>
       </div>
 
-      {blend.sections.map((section) => (
-        <SectionCard key={section.title} eyebrow={section.title} title={section.description}>
-          {section.tracks.length === 0 ? (
-            <p className="text-sm text-[#5d5257]">No tracks landed in this section for the current inputs.</p>
-          ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {section.tracks.map((track, index) => (
-                <article key={`${section.title}-${track.videoId ?? track.title}-${index}`} className="rounded-2xl bg-[#f8efe5] px-4 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-[#1d1720]">{track.title}</p>
-                      <p className="mt-1 text-sm text-[#5d5257]">
-                        {track.artist}
-                        {track.score ? ` • score ${track.score.toFixed(1)}` : ""}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5d5257]">{index + 1}</span>
-                  </div>
-                </article>
-              ))}
+      {/* Playlist Tracks Section */}
+      <div className="space-y-6">
+        {blend.sections.map((section, sIdx) => (
+          <div key={section.title} className="glass-panel rounded-2xl overflow-hidden shadow-xl border border-white/5">
+            <div className={`p-6 border-b border-white/5 ${sIdx === 0 ? "bg-brand-ytgradient2/10" : "bg-black/20"}`}>
+               <h3 className="font-display text-xl font-bold text-white mb-1">{section.title}</h3>
+               <p className="text-xs text-text-secondary">{section.description}</p>
             </div>
-          )}
-        </SectionCard>
-      ))}
+            
+            <div className="p-2">
+              {section.tracks.length === 0 ? (
+                <div className="p-8 text-center text-sm text-text-muted italic">No tracks landed in this section.</div>
+              ) : (
+                <div className="w-full">
+                  {/* Table Header */}
+                  <div className="flex items-center px-4 py-3 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                    <div className="w-12 text-center">#</div>
+                    <div className="flex-1">Title</div>
+                    <div className="flex-1 hidden md:block">Artist</div>
+                    <div className="w-24 text-right">Score</div>
+                  </div>
+                  
+                  {/* Tracks List */}
+                  <div className="flex flex-col pt-2 pb-2">
+                    {section.tracks.map((track, index) => (
+                      <div 
+                        key={`${section.title}-${track.videoId ?? track.title}-${index}`} 
+                        className="flex items-center px-4 py-3 rounded-xl transition-colors hover:bg-surface-elevated/80 group"
+                      >
+                        <div className="w-12 text-center text-text-muted font-medium text-sm group-hover:text-white transition-colors">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 pr-4">
+                          <p className="font-bold text-white text-sm truncate">{track.title}</p>
+                          {/* Artist shown here on mobile */}
+                          <p className="text-xs text-text-secondary mt-0.5 md:hidden truncate">{track.artist}</p>
+                        </div>
+                        <div className="flex-1 hidden md:block">
+                          <p className="text-sm text-text-secondary truncate group-hover:text-white transition-colors">{track.artist}</p>
+                        </div>
+                        <div className="w-24 text-right">
+                          {track.score ? (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-highlight/30 border border-white/5 text-xs font-semibold text-brand-ytgradient2 group-hover:bg-brand-ytgradient2/10 group-hover:border-brand-ytgradient2/20 transition-all">
+                              {track.score.toFixed(1)}
+                            </div>
+                          ) : (
+                            <span className="text-text-muted text-xs">—</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

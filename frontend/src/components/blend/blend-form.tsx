@@ -105,126 +105,143 @@ export function BlendForm() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <div className="grid gap-6 xl:grid-cols-2">
+    <form className="space-y-8" onSubmit={handleSubmit}>
+      <div className="grid gap-8 xl:grid-cols-2">
         {(["userA", "userB"] as ParticipantKey[]).map((key) => {
           const participant = draft[key];
 
           return (
             <SectionCard key={key} eyebrow={participantMeta[key].label} title={participantMeta[key].description}>
-              <div className="space-y-5">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Name</span>
+              <div className="space-y-6">
+                <label className="block relative group">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted transition-colors group-focus-within:text-white">Name</span>
                   <input
                     value={participant.name}
                     onChange={(event) => setParticipantName(key, event.target.value)}
                     placeholder={key === "userA" ? "Aanya" : "Kabir"}
-                    className="w-full rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d96e3d] focus:ring-2 focus:ring-[#d96e3d]/20"
+                    className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white placeholder-text-muted outline-none transition-all duration-300 focus:border-brand-spotify focus:ring-1 focus:ring-brand-spotify focus:bg-surface-elevated shadow-inner"
                   />
                 </label>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[#3b3238]">Playlist links</p>
+                  <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Playlist links</p>
                     <button
                       type="button"
                       onClick={() => addPlaylistLink(key)}
-                      className="rounded-full border border-[#1d1720]/10 px-3 py-1 text-xs font-semibold transition hover:border-[#d96e3d] hover:text-[#d96e3d]"
+                      className="group flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-spotify hover:text-white transition-colors"
                     >
-                      Add link
+                      <span className="w-4 h-4 rounded-full bg-brand-spotify/10 flex items-center justify-center group-hover:bg-brand-spotify group-hover:text-black transition-colors">+</span> Add
                     </button>
                   </div>
 
                   {participant.playlistLinks.map((link, index) => (
-                    <div key={`${key}-${index}`} className="flex gap-3">
+                    <div key={`${key}-${index}`} className="flex gap-2 animate-fade-in-up">
                       <input
                         value={link}
                         onChange={(event) => setPlaylistLink(key, index, event.target.value)}
                         placeholder="https://music.youtube.com/playlist?list=..."
-                        className="w-full rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d96e3d] focus:ring-2 focus:ring-[#d96e3d]/20"
+                        className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white placeholder-text-muted outline-none transition-all duration-300 focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
                       />
                       <button
                         type="button"
                         onClick={() => removePlaylistLink(key, index)}
-                        className="rounded-2xl border border-[#1d1720]/10 px-4 py-3 text-sm font-semibold transition hover:border-[#d96e3d] hover:text-[#d96e3d]"
+                        className="rounded-xl border border-white/10 bg-surface-elevated px-4 py-3 text-sm font-semibold text-text-muted transition-colors hover:border-brand-ytgradient2 hover:text-brand-ytgradient2 hover:bg-brand-ytgradient2/10"
                       >
-                        Remove
+                        ✕
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <label className="flex items-start gap-3 rounded-2xl border border-[#1d1720]/10 bg-[#f8efe5] px-4 py-4">
+                <label className="flex items-start gap-4 rounded-xl border border-white/10 bg-surface-highlight/30 px-5 py-4 cursor-pointer hover:bg-surface-highlight/60 transition-colors">
                   <input
                     checked={participant.includeLikedSongs}
                     onChange={(event) => setIncludeLikedSongs(key, event.target.checked)}
                     type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-[#1d1720]/20 text-[#d96e3d] focus:ring-[#d96e3d]"
+                    className="mt-0.5 h-4 w-4 appearance-none rounded border border-white/30 checked:bg-brand-spotify checked:border-brand-spotify flex-shrink-0 relative 
+                      before:content-['✓'] before:absolute before:text-white before:text-[10px] before:left-0.5 before:top-px before:font-bold before:opacity-0 checked:before:opacity-100 transition-all"
                   />
-                  <span className="space-y-1">
-                    <span className="block text-sm font-semibold text-[#1d1720]">Include liked songs</span>
-                    <span className="block text-sm text-[#5d5257]">
-                      Requires <code>headers_auth.json</code>. Attach it below or use the separate auth page later.
+                  <span className="space-y-1 block">
+                    <span className="block text-sm font-bold text-white">Include liked songs</span>
+                    <span className="block text-xs text-text-muted leading-relaxed">
+                      Requires <code className="bg-surface-elevated px-1 py-0.5 rounded text-brand-ytgradient2">headers_auth.json</code>. Attach it below or use the separate auth page later.
                     </span>
                   </span>
                 </label>
 
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Optional auth upload</span>
-                  <input
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={(event) => {
-                      const nextFile = event.target.files?.[0] ?? null;
-                      setAuthFiles((current) => ({ ...current, [key]: nextFile }));
-                    }}
-                    className="block w-full rounded-2xl border border-dashed border-[#1d1720]/15 bg-white px-4 py-4 text-sm text-[#5d5257]"
-                  />
-                </label>
+                {/* Only show auth upload if liked songs is checked to keep UI clean, though original had it always visible */}
+                <div className={`transition-all duration-500 overflow-hidden ${participant.includeLikedSongs ? 'max-h-40 opacity-100' : 'max-h-24 opacity-50'}`}>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Auth Upload (.json)</span>
+                    <div className="relative group cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".json,application/json"
+                        onChange={(event) => {
+                          const nextFile = event.target.files?.[0] ?? null;
+                          setAuthFiles((current) => ({ ...current, [key]: nextFile }));
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="w-full rounded-xl border border-dashed border-white/20 bg-surface-highlight/20 px-4 py-4 text-sm text-text-muted text-center group-hover:border-brand-spotify group-hover:bg-brand-spotify/5 transition-colors">
+                       {authFiles[key] ? (
+                         <span className="text-brand-spotify font-semibold flex items-center justify-center gap-2">✓ {authFiles[key]?.name}</span>
+                       ) : "Click to select or drop headers file"}
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
             </SectionCard>
           );
         })}
       </div>
 
-      <SectionCard eyebrow="Flow" title="What the app does once you submit">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl bg-[#f8efe5] px-4 py-4 text-sm text-[#5d5257]">
-            <p className="font-semibold text-[#1d1720]">Fetch</p>
-            <p className="mt-2">The backend pulls tracks from playlist links and liked songs sources with retries.</p>
-          </div>
-          <div className="rounded-2xl bg-[#f8efe5] px-4 py-4 text-sm text-[#5d5257]">
-            <p className="font-semibold text-[#1d1720]">Normalize</p>
-            <p className="mt-2">Titles and artists are cleaned, deduplicated, and fuzzy matched.</p>
-          </div>
-          <div className="rounded-2xl bg-[#f8efe5] px-4 py-4 text-sm text-[#5d5257]">
-            <p className="font-semibold text-[#1d1720]">Blend</p>
-            <p className="mt-2">The engine scores overlap, artist similarity, and diversity to shape the final sections.</p>
+      <div className="flex flex-col gap-6 rounded-3xl bg-surface-highlight/20 border border-white/5 p-8 md:flex-row md:items-center md:justify-between shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-r from-transparent via-brand-spotify/5 to-brand-ytmusic/5 pointer-events-none"></div>
+        <div className="relative z-10 max-w-xl">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Progress Flow</p>
+          <div className="mt-4 flex flex-col sm:flex-row gap-6 text-sm">
+            <div className="flex-1">
+              <p className="font-bold text-white flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-border flex items-center justify-center text-[10px]">1</span> Fetch</p>
+              <p className="mt-1 text-text-muted text-xs leading-relaxed">Pulls tracks from playlists and liked sources.</p>
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-white flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-border flex items-center justify-center text-[10px]">2</span> Normalize</p>
+              <p className="mt-1 text-text-muted text-xs leading-relaxed">Cleans, deduplicates, and fuzzy matches titles.</p>
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-white flex items-center gap-2"><span className="w-5 h-5 rounded-full bg-surface-border flex items-center justify-center text-[10px]">3</span> Blend</p>
+              <p className="mt-1 text-text-muted text-xs leading-relaxed">Scores overlap, similarity, and diversity.</p>
+            </div>
           </div>
         </div>
-      </SectionCard>
 
-      <div className="flex flex-col gap-4 rounded-[30px] bg-[#1d1720] px-6 py-6 text-[#f9f0e3] md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.26em] text-[#f3a56b]">Need to upload later?</p>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#f9f0e3]/72">
-            You can attach auth files now for a one-pass flow, or use the separate upload page once the users exist.
-          </p>
-          <Link href="/auth-upload" className="mt-3 inline-flex text-sm font-semibold text-[#f3a56b] transition hover:text-white">
-            Open auth upload
-          </Link>
-        </div>
-
-        <div className="min-w-[17rem]">
+        <div className="min-w-[17rem] relative z-10">
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-full bg-[#f3a56b] px-6 py-3 text-sm font-semibold text-[#1d1720] transition hover:bg-[#ffc085] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSubmitting || !canSubmit}
+            className={`w-full rounded-full px-8 py-4 text-sm font-bold transition-all shadow-xl
+              ${isSubmitting || !canSubmit 
+                ? "bg-surface-border text-text-muted cursor-not-allowed" 
+                : "bg-white text-black hover:scale-105 hover:shadow-[0_0_30px_rgba(29,185,84,0.3)]"}`}
           >
-            {isSubmitting ? "Building blend..." : "Generate blend"}
+            {isSubmitting ? "Generating..." : "Generate Blend"}
           </button>
-          {statusLine ? <p className="mt-3 text-sm text-[#f9f0e3]/70">{statusLine}</p> : null}
-          {error ? <p className="mt-2 text-sm text-[#ffb8a3]">{error}</p> : null}
+          
+          {statusLine ? (
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-brand-spotify animate-fade-in-up">
+              <span className="w-3 h-3 rounded-full border-2 border-brand-spotify border-t-transparent animate-spin"></span>
+              {statusLine}
+            </div>
+          ) : null}
+          
+          {error ? (
+            <div className="mt-4 text-center text-xs font-medium text-brand-ytred bg-brand-ytred/10 border border-brand-ytred/20 rounded-lg p-2 animate-fade-in-up">
+              {error}
+            </div>
+          ) : null}
         </div>
       </div>
     </form>

@@ -9,10 +9,15 @@ type SectionCardProps = {
 
 export function SectionCard({ eyebrow, title, children, className = "" }: SectionCardProps) {
   return (
-    <section className={`rounded-[30px] border border-white/60 bg-white/72 p-6 shadow-glow backdrop-blur ${className}`}>
-      {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#d96e3d]">{eyebrow}</p> : null}
-      {title ? <h2 className="mt-2 font-display text-2xl font-semibold text-[#1d1720]">{title}</h2> : null}
-      <div className={title || eyebrow ? "mt-5" : ""}>{children}</div>
+    <section className={`glass-panel rounded-[30px] p-8 shadow-xl relative overflow-hidden ${className}`}>
+      {/* Subtle top glare effect */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+      
+      <div className="relative z-10">
+        {eyebrow ? <p className="text-[10px] font-bold uppercase tracking-widest text-brand-spotify mb-2">{eyebrow}</p> : null}
+        {title ? <h2 className="font-display text-2xl font-bold text-white mb-6">{title}</h2> : null}
+        <div className={title || eyebrow ? "" : ""}>{children}</div>
+      </div>
     </section>
   );
 }

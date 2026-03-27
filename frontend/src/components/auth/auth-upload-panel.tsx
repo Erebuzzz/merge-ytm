@@ -14,7 +14,7 @@ export function AuthUploadPanel() {
   const [userId, setUserId] = useState(presetUserId);
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [tone, setTone] = useState<"success" | "error" | null>(null);
+  const [tone, setTone] = useState<"success" | "error" | "submitting" | "idle">("idle");
 
   const knownUsers = useMemo(() => {
     if (!result) {
@@ -42,10 +42,13 @@ export function AuthUploadPanel() {
       return;
     }
 
+    setTone("submitting");
+    setMessage("Uploading auth...");
+
     try {
       await uploadAuth(userId.trim(), file);
       setTone("success");
-      setMessage("Auth file stored. Re-upload later if YouTube Music invalidates the session.");
+      setMessage("Auth file securely stored.");
     } catch (error) {
       setTone("error");
       setMessage(error instanceof Error ? error.message : "Could not upload the auth file.");
@@ -53,56 +56,96 @@ export function AuthUploadPanel() {
   }
 
   return (
-    <SectionCard eyebrow="Private auth" title="Upload headers_auth.json">
-      <div className="space-y-5">
-        <div className="rounded-2xl bg-[#f8efe5] px-4 py-4 text-sm leading-7 text-[#5d5257]">
-          Use this page for liked songs imports or final playlist export. The backend encrypts the uploaded JSON before writing it to the
-          database and avoids logging the header payload.
-        </div>
-
-        {knownUsers.length > 0 ? (
-          <div className="flex flex-wrap gap-3">
-            {knownUsers.map((user) => (
-              <button
-                key={user.value}
-                type="button"
-                onClick={() => setUserId(user.value)}
-                className="rounded-full border border-[#1d1720]/10 px-4 py-2 text-sm font-semibold transition hover:border-[#d96e3d] hover:text-[#d96e3d]"
-              >
-                Use {user.label}
-              </button>
-            ))}
+    <div className="max-w-2xl mx-auto animate-fade-in-up mt-8">
+      <SectionCard eyebrow="Private auth" title="Upload headers_auth.json">
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/5 bg-surface-highlight/30 px-6 py-5 text-sm leading-relaxed text-text-secondary">
+            Use this page for liked songs imports or final playlist export. The backend encrypts the uploaded JSON before writing it to the database and avoids logging the header payload.
           </div>
-        ) : null}
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Listener user id</span>
-            <input
-              value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-              placeholder="Paste a backend user id"
-              className="w-full rounded-2xl border border-[#1d1720]/10 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d96e3d] focus:ring-2 focus:ring-[#d96e3d]/20"
-            />
-          </label>
+          {knownUsers.length > 0 ? (
+            <div className="flex flex-wrap gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center mr-2">Quick Select:</span>
+              {knownUsers.map((user) => (
+                <button
+                  key={user.value}
+                  type="button"
+                  onClick={() => setUserId(user.value)}
+                  className={`rounded-full px-4 py-2 text-xs font-bold transition-all border ${
+                    userId === user.value 
+                      ? "bg-brand-spotify/10 border-brand-spotify text-brand-spotify" 
+                      : "bg-surface-elevated border-white/10 text-text-secondary hover:text-white hover:border-white/30"
+                  }`}
+                >
+                  {user.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-[#3b3238]">Auth JSON</span>
-            <input
-              type="file"
-              accept=".json,application/json"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              className="block w-full rounded-2xl border border-dashed border-[#1d1720]/15 bg-white px-4 py-4 text-sm text-[#5d5257]"
-            />
-          </label>
+          <form className="space-y-6 pt-4 border-t border-white/5" onSubmit={handleSubmit}>
+            <label className="block">
+              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Listener User ID</span>
+              <input
+                value={userId}
+                onChange={(event) => setUserId(event.target.value)}
+                placeholder="Paste a backend user id"
+                className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-4 text-sm text-white placeholder-text-muted outline-none transition-all duration-300 focus:border-brand-spotify focus:ring-1 focus:ring-brand-spotify focus:bg-surface-elevated shadow-inner"
+              />
+            </label>
 
-          <button type="submit" className="rounded-full bg-[#1d1720] px-6 py-3 text-sm font-semibold text-[#f9f0e3] transition hover:bg-[#433645]">
-            Upload auth
-          </button>
+            <label className="block">
+              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Auth file (.json)</span>
+              <div className="relative group cursor-pointer">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="w-full rounded-2xl border-2 border-dashed border-white/20 bg-surface-highlight/20 px-8 py-10 text-sm text-text-muted text-center group-hover:border-brand-spotify group-hover:bg-brand-spotify/5 transition-colors flex flex-col items-center justify-center min-h-[160px]">
+                 {file ? (
+                   <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 rounded-full bg-brand-spotify/20 text-brand-spotify flex items-center justify-center text-xl mb-2">✓</div>
+                      <span className="text-white font-semibold text-base">{file.name}</span>
+                      <span className="text-xs text-text-muted">{(file.size / 1024).toFixed(1)} KB</span>
+                   </div>
+                 ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-12 h-12 rounded-full bg-surface-elevated text-text-muted flex items-center justify-center text-xl mb-2 group-hover:text-brand-spotify group-hover:scale-110 transition-all">+</div>
+                      <span className="font-semibold text-text-secondary block group-hover:text-white transition-colors">Click to select or drag and drop</span>
+                      <span className="text-xs">JSON files only</span>
+                    </div>
+                 )}
+                </div>
+              </div>
+            </label>
 
-          {message ? <p className={`text-sm ${tone === "error" ? "text-[#b24d2c]" : "text-[#5f7757]"}`}>{message}</p> : null}
-        </form>
-      </div>
-    </SectionCard>
+            <button 
+              type="submit" 
+              disabled={tone === "submitting"}
+              className="w-full rounded-full bg-white px-6 py-4 text-sm font-bold text-black transition hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed"
+            >
+              {tone === "submitting" ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin"></span>
+                  Uploading...
+                </span>
+              ) : "Secure Upload"}
+            </button>
+
+            {message ? (
+              <p className={`text-xs font-medium text-center p-3 rounded-lg animate-fade-in-up
+                ${tone === "error" ? "bg-brand-ytred/10 text-brand-ytred border border-brand-ytred/20" : 
+                  tone === "success" ? "bg-brand-spotify/10 text-brand-spotify border border-brand-spotify/20" : 
+                  "text-text-muted"}
+              `}>
+                {message}
+              </p>
+            ) : null}
+          </form>
+        </div>
+      </SectionCard>
+    </div>
   );
 }

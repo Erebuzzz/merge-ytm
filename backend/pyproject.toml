@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "ytmusic-sync-backend"
 version = "0.1.0"
 description = "FastAPI backend for YTMusic Sync"
-readme = "../README.md"
 requires-python = ">=3.11"
 dependencies = [
   "celery>=5.4,<6.0",

@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: ytmusic-sync-backend
+Version: 0.1.0
+Summary: FastAPI backend for YTMusic Sync
+Requires-Python: >=3.11
+Requires-Dist: celery<6.0,>=5.4
+Requires-Dist: cryptography<44.0,>=42.0
+Requires-Dist: fastapi<1.0,>=0.115
+Requires-Dist: httpx<1.0,>=0.27
+Requires-Dist: psycopg[binary]<4.0,>=3.2
+Requires-Dist: pydantic-settings<3.0,>=2.4
+Requires-Dist: python-multipart<1.0,>=0.0.9
+Requires-Dist: rapidfuzz<4.0,>=3.9
+Requires-Dist: redis<6.0,>=5.0
+Requires-Dist: sqlalchemy<3.0,>=2.0
+Requires-Dist: tenacity<9.0,>=8.4
+Requires-Dist: uvicorn[standard]<1.0,>=0.30
+Requires-Dist: ytmusicapi<2.0,>=1.8
+Provides-Extra: dev
+Requires-Dist: pytest<9.0,>=8.3; extra == "dev"

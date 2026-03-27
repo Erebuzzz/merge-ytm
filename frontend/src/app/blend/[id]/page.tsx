@@ -1,25 +1,30 @@
 import Link from "next/link";
-
 import { ResultsPanel } from "@/components/blend/results-panel";
 import { SectionCard } from "@/components/ui/section-card";
 import { getBlend } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-export default async function BlendResultPage({ params }: { params: { id: string } }) {
+export default async function BlendResultPage({ params }: { params: Promise<{ id: string }> }) {
   try {
-    const blend = await getBlend(params.id);
+    const { id } = await params;
+    const blend = await getBlend(id);
     return <ResultsPanel blend={blend} />;
   } catch (error) {
     return (
-      <SectionCard eyebrow="Blend lookup" title="Could not load this blend">
-        <p className="text-sm leading-7 text-[#5d5257]">
-          {error instanceof Error ? error.message : "The backend did not return a usable blend."}
-        </p>
-        <Link href="/blend/create" className="mt-4 inline-flex rounded-full bg-[#1d1720] px-5 py-3 text-sm font-semibold text-[#f9f0e3] transition hover:bg-[#433645]">
-          Create another blend
-        </Link>
-      </SectionCard>
+      <div className="flex h-[60vh] items-center justify-center">
+        <SectionCard eyebrow="Blend lookup" title="Could not load this blend" className="max-w-xl text-center">
+          <p className="text-sm leading-7 text-text-secondary mt-4 mb-8">
+            {error instanceof Error ? error.message : "The backend did not return a usable blend. It may have expired or never existed."}
+          </p>
+          <Link 
+            href="/blend/create" 
+            className="inline-flex rounded-full bg-brand-spotify px-8 py-3 text-sm font-bold text-black transition hover:scale-105"
+          >
+            Create another blend
+          </Link>
+        </SectionCard>
+      </div>
     );
   }
 }
