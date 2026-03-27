@@ -1,15 +1,16 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 
 import { uploadAuth } from "@/lib/api";
 import { useBlendStore } from "@/store/blend-store";
 import { SectionCard } from "@/components/ui/section-card";
 
-export function AuthUploadPanel() {
-  const searchParams = useSearchParams();
-  const presetUserId = searchParams.get("userId") ?? "";
+type AuthUploadPanelProps = {
+  presetUserId?: string;
+};
+
+export function AuthUploadPanel({ presetUserId = "" }: AuthUploadPanelProps) {
   const result = useBlendStore((state) => state.result);
   const [userId, setUserId] = useState(presetUserId);
   const [file, setFile] = useState<File | null>(null);

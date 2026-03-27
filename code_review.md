@@ -12,7 +12,30 @@ The repository now contains an initial full-stack implementation for:
 - YT Music integration wrapper
 - local infrastructure scaffolding
 
-It was reviewed statically in the workspace. Runtime installs and test execution were not possible here because `node`, `npm`, and `python` were not available in the shell session.
+It was reviewed in the workspace with a mix of static inspection and deployment-focused verification. The frontend production build completed successfully, and both Vercel deployments reached the `READY` state.
+
+## Deployment Review
+
+### What changed for Vercel
+
+- `backend/index.py` was added so Vercel has a clear Python entrypoint that exposes the FastAPI `app`.
+- The SQLAlchemy session setup now handles SQLite correctly by setting `check_same_thread=False` when `DATABASE_URL` points at SQLite.
+- CORS middleware now treats `FRONTEND_URL="*"` as a deliberate wildcard case and disables credentials for that mode.
+- The Next.js auth upload page no longer depends on `useSearchParams()` during prerender, which avoids the build-time failure on `/auth-upload`.
+
+### Why these fixes matter
+
+- Without the Python entrypoint, the backend project is not deployment-friendly on Vercel.
+- Without the SQLite-specific engine option, the lightweight serverless database path is fragile.
+- Without the wildcard CORS branch, a temporary bootstrap deployment cannot call the API safely.
+- Without the auth upload page fix, the frontend production build fails during prerender.
+
+### Current deployment state
+
+- the frontend production deployment is building successfully on Vercel
+- the backend production deployment is marked `READY` on Vercel
+- the frontend was verified by fetching the live deployment output
+- direct backend HTTP verification is still blocked by Vercel deployment protection, so the platform-side deployment state is the current confirmation point
 
 ## Backend Review
 
