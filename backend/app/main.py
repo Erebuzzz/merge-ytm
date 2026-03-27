@@ -35,4 +35,4 @@ def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
 
 
-app.include_router(router)
+app.include_router(router, prefix="/api")

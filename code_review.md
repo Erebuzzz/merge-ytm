@@ -18,14 +18,16 @@ It was reviewed in the workspace with a mix of static inspection and deployment-
 
 ### What changed for Vercel
 
-- `backend/index.py` was added so Vercel has a clear Python entrypoint that exposes the FastAPI `app`.
+- `backend/api/index.py` now exposes the FastAPI application from a root-level `api/` directory, which is the explicit Vercel Functions layout for Python backends.
+- `backend/pyproject.toml` now defines a `project.scripts.app = "app.main:app"` export as a secondary explicit app mapping.
+- The FastAPI router is mounted under `/api`, which matches the Vercel function path and keeps the public deployment layout consistent.
 - The SQLAlchemy session setup now handles SQLite correctly by setting `check_same_thread=False` when `DATABASE_URL` points at SQLite.
 - CORS middleware now treats `FRONTEND_URL="*"` as a deliberate wildcard case and disables credentials for that mode.
 - The Next.js auth upload page no longer depends on `useSearchParams()` during prerender, which avoids the build-time failure on `/auth-upload`.
 
 ### Why these fixes matter
 
-- Without the Python entrypoint, the backend project is not deployment-friendly on Vercel.
+- Without a root-level Python function entrypoint under `api/`, Vercel can treat the backend folder like a static project and emit no API function output.
 - Without the SQLite-specific engine option, the lightweight serverless database path is fragile.
 - Without the wildcard CORS branch, a temporary bootstrap deployment cannot call the API safely.
 - Without the auth upload page fix, the frontend production build fails during prerender.

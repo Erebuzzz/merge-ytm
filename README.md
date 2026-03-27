@@ -27,11 +27,11 @@ The app is aimed at non-technical users who want a low-friction way to compare t
 
 ```mermaid
 flowchart LR
-    A["Next.js frontend"] -->|"POST /blend/create"| B["FastAPI API"]
-    A -->|"POST /user/upload-auth"| B
-    A -->|"POST /playlist/fetch"| B
+    A["Next.js frontend"] -->|"POST /api/blend/create"| B["FastAPI API"]
+    A -->|"POST /api/user/upload-auth"| B
+    A -->|"POST /api/playlist/fetch"| B
     A -->|"POST /blend/generate"| B
-    A -->|"POST /ytmusic/create-playlist"| B
+    A -->|"POST /api/ytmusic/create-playlist"| B
 
     B -->|"store users, sources, blends"| C["PostgreSQL"]
     B -->|"queue long-running jobs"| D["Celery worker"]
@@ -45,16 +45,16 @@ flowchart LR
 ## Main Flow
 
 1. The frontend collects two listeners and their sources.
-2. `POST /blend/create` creates users, playlist sources, and an empty blend record.
+2. `POST /api/blend/create` creates users, playlist sources, and an empty blend record.
 3. Optional auth files are uploaded and encrypted before storage.
-4. `POST /playlist/fetch` fetches playlist tracks and liked songs.
+4. `POST /api/playlist/fetch` fetches playlist tracks and liked songs.
 5. The backend normalizes titles and artists, strips noisy suffixes, deduplicates tracks, and uses fuzzy matching for near duplicates.
 6. `POST /blend/generate` computes:
    - shared tracks
    - user A recommendations
    - user B recommendations
    - compatibility score
-7. `POST /ytmusic/create-playlist` creates a private playlist and pushes validated track ids.
+7. `POST /api/ytmusic/create-playlist` creates a private playlist and pushes validated track ids.
 
 ## Blend Engine
 
@@ -91,20 +91,20 @@ This keeps the blend from collapsing into either:
 
 ### Required endpoints
 
-- `POST /blend/create`
-- `POST /user/upload-auth`
-- `POST /playlist/fetch`
+- `POST /api/blend/create`
+- `POST /api/user/upload-auth`
+- `POST /api/playlist/fetch`
 - `GET /blend/{id}`
 - `POST /blend/generate`
-- `POST /ytmusic/create-playlist`
+- `POST /api/ytmusic/create-playlist`
 
 ### Practical shape
 
-- `/blend/create` persists listeners and source references
-- `/user/upload-auth` accepts multipart JSON upload and encrypts it
-- `/playlist/fetch` can run synchronously for the simple UI path or asynchronously through Celery
+- `/api/blend/create` persists listeners and source references
+- `/api/user/upload-auth` accepts multipart JSON upload and encrypts it
+- `/api/playlist/fetch` can run synchronously for the simple UI path or asynchronously through Celery
 - `/blend/generate` materializes final sections into the `blends` table
-- `/ytmusic/create-playlist` validates video ids before export
+- `/api/ytmusic/create-playlist` validates video ids before export
 
 ## Repository Layout
 
