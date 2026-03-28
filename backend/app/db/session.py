@@ -7,12 +7,12 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# Normalize the database URL for psycopg driver
+# Normalize the database URL for psycopg2 driver
 db_url = settings.database_url
 if db_url.startswith("postgresql://"):
-    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 elif db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
 
 # Add sslmode for cloud databases (Supabase, Neon, etc.)
 connect_args: dict = {}
