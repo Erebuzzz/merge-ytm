@@ -61,7 +61,22 @@ export function AuthUploadPanel({ presetUserId = "" }: AuthUploadPanelProps) {
       <SectionCard eyebrow="Private auth" title="Upload headers_auth.json">
         <div className="space-y-6">
           <div className="rounded-2xl border border-white/5 bg-surface-highlight/30 px-6 py-5 text-sm leading-relaxed text-text-secondary">
-            Use this page for liked songs imports or final playlist export. The backend encrypts the uploaded JSON before writing it to the database and avoids logging the header payload.
+            <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full bg-brand-ytmusic text-black flex items-center justify-center text-[10px]">?</span>
+              How to get your headers_auth.json
+            </h3>
+            <ol className="list-decimal pl-4 space-y-3 text-xs">
+              <li>Open <a href="https://music.youtube.com" target="_blank" rel="noreferrer" className="text-brand-ytmusic font-bold hover:underline">YouTube Music</a> on your computer and log in.</li>
+              <li>Open <strong>Developer Tools</strong> (Right-click &gt; Inspect, or F12) and go to the <strong>Network</strong> tab.</li>
+              <li>In the Network tab filter box, type <code>browse</code> or <code>next</code>.</li>
+              <li>Click around the YouTube Music website (e.g., click a playlist) to trigger a network request.</li>
+              <li>Click on the <code>browse</code> or <code>next</code> request that appears. In the side panel, scroll down to <strong>Request Headers</strong>.</li>
+              <li>Right-click on the Request Headers section and select <strong>Copy object</strong> (Chrome) or copy the raw JSON.</li>
+              <li>Paste the copied text into a new text file and save it as <code>headers_auth.json</code>.</li>
+            </ol>
+            <p className="mt-4 text-[11px] bg-brand-spotify/10 text-brand-spotify p-3 rounded-xl border border-brand-spotify/20">
+              <strong>Privacy Note:</strong> This file contains your authentication session. Our backend immediately encrypts it before storing and uses it exclusively for fetching your likes and exporting the final blend.
+            </p>
           </div>
 
           {knownUsers.length > 0 ? (

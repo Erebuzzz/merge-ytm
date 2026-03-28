@@ -135,6 +135,33 @@ class BlendService:
         blend.tracks_common = [track.model_dump(by_alias=True) for track in sections[0].tracks]
         blend.tracks_a = [track.model_dump(by_alias=True) for track in sections[1].tracks]
         blend.tracks_b = [track.model_dump(by_alias=True) for track in sections[2].tracks]
+
+        # Algorithm Discoveries
+        seed_ids = []
+        for track in sections[0].tracks:
+            if track.video_id:
+                seed_ids.append(track.video_id)
+                break
+        
+        if not seed_ids:
+            for track in sections[1].tracks + sections[2].tracks:
+                if track.video_id:
+                    seed_ids.append(track.video_id)
+                    break
+
+        recommended = []
+        if seed_ids:
+            try:
+                client = YTMusicService()
+                raw_recs = client.get_recommendations(seed_ids, limit=20)
+                existing_keys = {t.normalized_key for t in user_a_tracks + user_b_tracks if t.normalized_key}
+                discoveries = [r for r in raw_recs if r.normalized_key not in existing_keys]
+                recommended = discoveries[:15]
+            except Exception:
+                pass
+
+        blend.tracks_recommended = [track.model_dump(by_alias=True) for track in recommended]
+        
         blend.compatibility_score = float(result["compatibility_score"])
         blend.diagnostics = result["diagnostics"]
         blend.status = "ready"
@@ -177,6 +204,11 @@ class BlendService:
                 title="From User B",
                 description="Recommendations from User B that still fit the shared pocket.",
                 tracks=[TrackPayload.model_validate(item) for item in blend.tracks_b or []],
+            ),
+            BlendSection(
+                title="New Discoveries",
+                description="Algorithmic recommendations based on your combined music tastes.",
+                tracks=[TrackPayload.model_validate(item) for item in blend.tracks_recommended or []],
             ),
         ]
 
@@ -236,7 +268,7 @@ class BlendService:
 
     def _flatten_blend_tracks(self, blend: Blend) -> list[TrackPayload]:
         combined = []
-        for payload in [blend.tracks_common, blend.tracks_a, blend.tracks_b]:
+        for payload in [blend.tracks_common, blend.tracks_a, blend.tracks_b, blend.tracks_recommended]:
             combined.extend(TrackPayload.model_validate(item) for item in payload or [])
         return combined
 

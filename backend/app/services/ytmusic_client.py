@@ -104,3 +104,28 @@ class YTMusicService:
             return playlist_id
 
         return self._run_with_client(callback)
+
+    @retry(stop=stop_after_attempt(settings.ytmusic_retry_attempts), wait=wait_exponential(min=1, max=8), reraise=True)
+    def get_recommendations(self, video_ids: list[str], limit: int = 15) -> list[TrackPayload]:
+        """Fetch YouTube Music up-next (radio) recommendations based on seed video IDs."""
+        if not video_ids:
+            return []
+
+        # We seed the radio station with the first video ID
+        # ytmusicapi get_watch_playlist provides up next / radio
+        def callback(client: YTMusic) -> list[TrackPayload]:
+            payload = client.get_watch_playlist(videoId=video_ids[0])
+            tracks: list[TrackPayload] = []
+            
+            # Skip the first track as it's the seed track
+            for item in payload.get("tracks", [])[1:]:
+                # If we have multiple seeds, we probably shouldn't include them in the recommendations
+                if item.get("videoId") in video_ids:
+                    continue
+                
+                track = track_from_ytmusic(item, source="algorithmic_recommendation")
+                if track and len(tracks) < limit:
+                    tracks.append(track)
+            return tracks
+
+        return self._run_with_client(callback)

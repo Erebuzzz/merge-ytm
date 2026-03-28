@@ -61,6 +61,7 @@ class Blend(TimestampMixin, Base):
     tracks_common: Mapped[list[dict]] = mapped_column(JSON, default=list)
     tracks_a: Mapped[list[dict]] = mapped_column(JSON, default=list)
     tracks_b: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    tracks_recommended: Mapped[list[dict]] = mapped_column(JSON, default=list)
     diagnostics: Mapped[dict] = mapped_column(JSON, default=dict)
     youtube_playlist_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 

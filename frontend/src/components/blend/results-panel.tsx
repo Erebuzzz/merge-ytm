@@ -192,8 +192,11 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
       <div className="space-y-6">
         {blend.sections.map((section, sIdx) => (
           <div key={section.title} className="glass-panel rounded-2xl overflow-hidden shadow-xl border border-white/5">
-            <div className={`p-6 border-b border-white/5 ${sIdx === 0 ? "bg-brand-ytgradient2/10" : "bg-black/20"}`}>
-               <h3 className="font-display text-xl font-bold text-white mb-1">{section.title}</h3>
+            <div className={`p-6 border-b border-white/5 ${sIdx === 0 ? "bg-brand-ytgradient2/10" : section.title === "New Discoveries" ? "bg-brand-spotify/10" : "bg-black/20"}`}>
+               <h3 className="font-display text-xl font-bold text-white mb-1 flex items-center gap-2">
+                 {section.title === "New Discoveries" && <span className="text-brand-spotify text-[16px]">✨</span>}
+                 {section.title}
+               </h3>
                <p className="text-xs text-text-secondary">{section.description}</p>
             </div>
             
