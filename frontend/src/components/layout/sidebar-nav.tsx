@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useSession, signOut } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
 
 export function SidebarNav() {

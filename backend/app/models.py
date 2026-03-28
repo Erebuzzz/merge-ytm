@@ -22,6 +22,7 @@ class TimestampMixin:
 
 class User(Base):
     __tablename__ = "user"
+    __table_args__ = {"schema": "neon_auth"}
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(80))
@@ -38,6 +39,7 @@ class User(Base):
 
 class Session(Base):
     __tablename__ = "session"
+    __table_args__ = {"schema": "neon_auth"}
     
     id: Mapped[str] = mapped_column(String, primary_key=True)
     expiresAt: Mapped[datetime] = mapped_column(DateTime)
@@ -46,15 +48,16 @@ class Session(Base):
     updatedAt: Mapped[datetime] = mapped_column(DateTime)
     ipAddress: Mapped[str | None] = mapped_column(String, nullable=True)
     userAgent: Mapped[str | None] = mapped_column(String, nullable=True)
-    userId: Mapped[str] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    userId: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"))
 
 class Account(Base):
     __tablename__ = "account"
+    __table_args__ = {"schema": "neon_auth"}
     
     id: Mapped[str] = mapped_column(String, primary_key=True)
     accountId: Mapped[str] = mapped_column(String)
     providerId: Mapped[str] = mapped_column(String)
-    userId: Mapped[str] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    userId: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"))
     accessToken: Mapped[str | None] = mapped_column(Text, nullable=True)
     refreshToken: Mapped[str | None] = mapped_column(Text, nullable=True)
     idToken: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -67,6 +70,7 @@ class Account(Base):
 
 class Verification(Base):
     __tablename__ = "verification"
+    __table_args__ = {"schema": "neon_auth"}
     
     id: Mapped[str] = mapped_column(String, primary_key=True)
     identifier: Mapped[str] = mapped_column(String)
@@ -79,7 +83,7 @@ class PlaylistSource(TimestampMixin, Base):
     __tablename__ = "playlist_sources"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     source_type: Mapped[str] = mapped_column(String(20))
     source_value: Mapped[str] = mapped_column(String(512))
     status: Mapped[str] = mapped_column(String(20), default="pending")
@@ -93,8 +97,8 @@ class Blend(TimestampMixin, Base):
     __tablename__ = "blends"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    participant_a_id: Mapped[str] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), index=True)
-    participant_b_id: Mapped[str] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), index=True)
+    participant_a_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    participant_b_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="pending")
     compatibility_score: Mapped[float] = mapped_column(Float, default=0.0)
     tracks_common: Mapped[list[dict]] = mapped_column(JSON, default=list)

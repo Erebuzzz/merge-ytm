@@ -33,9 +33,14 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    """Create tables on startup. Safe on serverless — runs once per cold start."""
+    """Create tables on startup. Only public-schema tables — neon_auth is managed externally."""
     try:
-        Base.metadata.create_all(bind=engine)
+        # Only create tables that belong to the public schema (blends, playlist_sources)
+        public_tables = [
+            t for t in Base.metadata.sorted_tables
+            if t.schema is None
+        ]
+        Base.metadata.create_all(bind=engine, tables=public_tables)
     except Exception:
         # Allow the app to start even if DB is temporarily unreachable
         pass

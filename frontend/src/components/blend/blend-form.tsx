@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 
 import { createBlend, fetchPlaylistSources, generateBlend, uploadAuth } from "@/lib/api";
-import { useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth/client";
 import { useBlendStore } from "@/store/blend-store";
 import { SectionCard } from "@/components/ui/section-card";
 

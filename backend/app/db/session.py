@@ -9,6 +9,12 @@ settings = get_settings()
 
 # Normalize the database URL for psycopg2 driver
 db_url = settings.database_url
+
+# Strip channel_binding param — psycopg2 does not support it
+if "channel_binding" in db_url:
+    import re
+    db_url = re.sub(r"[&?]channel_binding=[^&]*", "", db_url)
+
 if db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 elif db_url.startswith("postgres://"):
