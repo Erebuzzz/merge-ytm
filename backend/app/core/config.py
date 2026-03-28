@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     app_name: str = "YTMusic Sync API"
     app_version: str = "0.1.0"
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ytmusic_sync"
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = ""
     secret_key: str = "replace-this-with-a-long-random-secret"
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "*"
     debug: bool = True
     max_playlist_links: int = 5
     liked_songs_limit: int = 5000
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ytmusic_retry_attempts: int = 3
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
