@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import uuid
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -34,9 +35,17 @@ class BlendService:
         if not self._participant_has_source(payload.user_a) or not self._participant_has_source(payload.user_b):
             raise ValueError("Each listener needs at least one playlist link or a liked songs import.")
 
-        user_a = User(name=payload.user_a.name.strip())
-        user_b = User(name=payload.user_b.name.strip())
-        self.db.add_all([user_a, user_b])
+        user_a = None
+        if payload.creator_id:
+            user_a = self.db.get(User, payload.creator_id)
+        
+        if not user_a:
+            user_a = User(id=str(uuid.uuid4()), name=payload.user_a.name.strip(), email=f"{uuid.uuid4()}@anon.local", emailVerified=False, createdAt=datetime.now(), updatedAt=datetime.now())
+            self.db.add(user_a)
+
+        user_b_id = str(uuid.uuid4())
+        user_b = User(id=user_b_id, name=payload.user_b.name.strip(), email=f"{user_b_id}@anon.local", emailVerified=False, createdAt=datetime.now(), updatedAt=datetime.now())
+        self.db.add(user_b)
         self.db.flush()
 
         sources: list[PlaylistSource] = []
@@ -59,6 +68,24 @@ class BlendService:
             userIds={"userA": user_a.id, "userB": user_b.id},
             status=blend.status,
         )
+
+    def get_user_blends(self, user_id: str) -> list[dict]:
+        blends = self.db.scalars(
+            select(Blend).where(
+                (Blend.participant_a_id == user_id) | (Blend.participant_b_id == user_id)
+            ).order_by(Blend.created_at.desc())
+        ).all()
+        
+        result = []
+        for b in blends:
+            result.append({
+                "id": b.id,
+                "participant_a_name": b.participant_a.name if b.participant_a else "Unknown",
+                "participant_b_name": b.participant_b.name if b.participant_b else "Unknown",
+                "compatibility_score": b.compatibility_score,
+                "created_at": b.created_at.isoformat() if b.created_at else None
+            })
+        return result
 
     def save_auth_file(self, user_id: str, payload: dict[str, Any]) -> dict[str, str]:
         user = self._get_user(user_id)

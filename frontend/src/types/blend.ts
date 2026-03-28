@@ -43,6 +43,7 @@ export type ParticipantDraft = {
 export type CreateBlendPayload = {
   userA: ParticipantDraft;
   userB: ParticipantDraft;
+  creatorId?: string;
 };
 
 export type CreateBlendResponse = {

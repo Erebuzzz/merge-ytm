@@ -100,15 +100,6 @@ export function AuthUploadPanel({ presetUserId = "" }: AuthUploadPanelProps) {
           ) : null}
 
           <form className="space-y-6 pt-4 border-t border-white/5" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Listener User ID</span>
-              <input
-                value={userId}
-                onChange={(event) => setUserId(event.target.value)}
-                placeholder="Paste a backend user id"
-                className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-4 text-sm text-white placeholder-text-muted outline-none transition-all duration-300 focus:border-brand-spotify focus:ring-1 focus:ring-brand-spotify focus:bg-surface-elevated shadow-inner"
-              />
-            </label>
 
             <label className="block">
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Auth file (.json)</span>

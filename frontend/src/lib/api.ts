@@ -5,7 +5,7 @@ import type {
   PlaylistFetchResponse,
 } from "@/types/blend";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -47,6 +47,7 @@ export async function createBlend(payload: CreateBlendPayload): Promise<CreateBl
         playlist_links: payload.userB.playlistLinks.filter(Boolean),
         include_liked_songs: payload.userB.includeLikedSongs,
       },
+      creator_id: payload.creatorId,
     }),
   });
 }

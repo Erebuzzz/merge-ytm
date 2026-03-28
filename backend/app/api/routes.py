@@ -60,6 +60,11 @@ async def upload_auth_file(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
+@router.get("/blends/mine")
+def get_my_blends(user_id: str, db: Session = Depends(get_db)) -> list[dict]:
+    return _service(db).get_user_blends(user_id)
+
+
 @router.post("/playlist/fetch", response_model=PlaylistFetchResponse)
 def fetch_playlists(payload: PlaylistFetchRequest, db: Session = Depends(get_db)) -> PlaylistFetchResponse:
     if not payload.sync:

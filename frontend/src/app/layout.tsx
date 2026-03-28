@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
+import { SidebarNav } from "@/components/layout/sidebar-nav";
 
 import "./globals.css";
 
@@ -36,29 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
                 </p>
               </Link>
 
-              <nav className="flex flex-col gap-2 font-semibold text-sm text-text-secondary">
-                <Link href="/" className="px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary">
-                  Home
-                </Link>
-                <Link
-                  href="/blend/create"
-                  className="px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary"
-                >
-                  Create Blend
-                </Link>
-                <Link
-                  href="/auth-upload"
-                  className="px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary"
-                >
-                  Auth Upload
-                </Link>
-                <Link
-                  href="/faq"
-                  className="px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary"
-                >
-                  Docs & FAQ
-                </Link>
-              </nav>
+              <SidebarNav />
             </div>
             
             <div className="mt-auto p-6 space-y-4">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 
 import { createBlend, fetchPlaylistSources, generateBlend, uploadAuth } from "@/lib/api";
+import { useSession } from "@/lib/auth-client";
 import { useBlendStore } from "@/store/blend-store";
 import { SectionCard } from "@/components/ui/section-card";
 
@@ -23,6 +24,7 @@ const participantMeta: Record<ParticipantKey, { label: string; description: stri
 
 export function BlendForm() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [authFiles, setAuthFiles] = useState<Record<ParticipantKey, File | null>>({
     userA: null,
     userB: null,
@@ -73,7 +75,7 @@ export function BlendForm() {
 
     try {
       setStatusLine("Creating a backend record for this blend");
-      const created = await createBlend(draft);
+      const created = await createBlend({ ...draft, creatorId: session?.user.id });
 
       for (const key of ["userA", "userB"] as ParticipantKey[]) {
         const file = authFiles[key];

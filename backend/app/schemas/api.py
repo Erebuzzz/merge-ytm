@@ -38,6 +38,7 @@ class ParticipantSourceInput(BaseModel):
 class BlendCreateRequest(BaseModel):
     user_a: ParticipantSourceInput
     user_b: ParticipantSourceInput
+    creator_id: str | None = None
 
 
 class BlendCreateResponse(BaseModel):
