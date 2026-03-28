@@ -52,11 +52,35 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
                 >
                   Auth Upload
                 </Link>
+                <Link
+                  href="/faq"
+                  className="px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary"
+                >
+                  Docs & FAQ
+                </Link>
               </nav>
             </div>
             
-            <div className="mt-auto p-6 text-xs text-text-muted">
-              v1.0.0 &bull; Hybrid MVP
+            <div className="mt-auto p-6 space-y-4">
+              <div className="flex flex-col gap-3">
+                <p className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Say Hello</p>
+                <div className="flex flex-wrap gap-3 text-sm font-medium text-text-muted">
+                  <a href="mailto:kshitiz23kumar@gmail.com" title="Email" className="hover:text-brand-ytmusic transition-colors tracking-tighter">Mail</a>
+                  <a href="https://github.com/Erebuzzz" target="_blank" rel="noreferrer" title="GitHub" className="hover:text-white transition-colors tracking-tighter">GitHub</a>
+                  <a href="https://www.linkedin.com/in/kksinha23" target="_blank" rel="noreferrer" title="LinkedIn" className="hover:text-[#0077b5] transition-colors tracking-tighter">LinkedIn</a>
+                  <a href="https://x.com/erebuzzz" target="_blank" rel="noreferrer" title="X" className="hover:text-white transition-colors tracking-tighter">𝕏</a>
+                  <a href="https://discord.com/users/1206267175267074049" target="_blank" rel="noreferrer" title="Discord" className="hover:text-[#5865F2] transition-colors tracking-tighter">Discord</a>
+                </div>
+                <div className="text-xs text-text-muted mt-1">
+                  <a href="https://github.com/Erebuzzz/ytmusic-sync" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-brand-spotify transition-colors font-semibold">
+                    ⭐ Star YTMusic Sync
+                  </a>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-text-muted/60 pt-4 border-t border-white/5">
+                v1.0.0 &bull; Hybrid MVP
+              </div>
             </div>
           </aside>
 

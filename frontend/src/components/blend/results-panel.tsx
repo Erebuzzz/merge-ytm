@@ -105,86 +105,104 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
         </SectionCard>
 
         <SectionCard eyebrow="Export" title="Push to YT Music">
-          <div className="space-y-5">
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Export with</span>
-              <select
-                value={selectedUserId}
-                onChange={(event) => setSelectedUserId(event.target.value)}
-                className="w-full appearance-none rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
-              >
-                <option value={blend.participants.userA.userId} className="bg-surface-elevated text-white">
-                  {blend.participants.userA.name}
-                  {blend.participants.userA.hasAuth ? "" : " (auth missing)"}
-                </option>
-                <option value={blend.participants.userB.userId} className="bg-surface-elevated text-white">
-                  {blend.participants.userB.name}
-                  {blend.participants.userB.hasAuth ? "" : " (auth missing)"}
-                </option>
-              </select>
-            </label>
-
-            <div className="grid gap-3 sm:grid-cols-2">
+          {!canExport ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center space-y-4 rounded-2xl border border-white/5 bg-surface-highlight/20">
+              <div className="w-12 h-12 rounded-full bg-brand-spotify/10 flex items-center justify-center text-brand-spotify text-xl mb-2">🔒</div>
+              <div>
+                <h4 className="font-bold text-white tracking-wide">Authentication Required</h4>
+                <p className="text-xs text-text-muted mt-1 max-w-[250px]">To push this playlist directly to your library, verify your YouTube Music session first.</p>
+              </div>
               <Link
-                href={`/auth-upload?userId=${blend.participants.userA.userId}`}
-                className="rounded-xl border border-white/10 bg-surface-highlight/20 px-4 py-3 text-xs font-bold text-center text-text-secondary transition-colors hover:border-brand-spotify hover:text-white hover:bg-brand-spotify/10"
+                href="/auth-upload"
+                className="mt-4 px-6 py-3 rounded-full bg-brand-ytmusic text-black font-bold text-xs hover:scale-105 transition shadow-lg"
               >
-                Upload auth for {blend.participants.userA.name}
-              </Link>
-              <Link
-                href={`/auth-upload?userId=${blend.participants.userB.userId}`}
-                className="rounded-xl border border-white/10 bg-surface-highlight/20 px-4 py-3 text-xs font-bold text-center text-text-secondary transition-colors hover:border-brand-spotify hover:text-white hover:bg-brand-spotify/10"
-              >
-                Upload auth for {blend.participants.userB.name}
+                Upload Auth JSON
               </Link>
             </div>
+          ) : (
+            <div className="space-y-5">
+              <p className="text-xs text-text-secondary">Ready to sync directly to your YouTube Music library.</p>
+              
+              <div className="space-y-4">
+                <details className="group border border-white/10 rounded-xl bg-surface-highlight/30 overflow-hidden open:bg-surface-elevated transition-colors">
+                  <summary className="px-5 py-4 cursor-pointer flex justify-between items-center text-sm font-bold text-white select-none">
+                    Advanced Options
+                    <span className="text-text-muted group-open:rotate-180 transition-transform">▼</span>
+                  </summary>
+                  
+                  <div className="p-5 border-t border-white/5 space-y-5">
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Export Account</span>
+                      <select
+                        value={selectedUserId}
+                        onChange={(event) => setSelectedUserId(event.target.value)}
+                        className="w-full appearance-none rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
+                      >
+                        {blend.participants.userA.hasAuth && (
+                          <option value={blend.participants.userA.userId} className="bg-surface-elevated text-white">
+                            {blend.participants.userA.name}
+                          </option>
+                        )}
+                        {blend.participants.userB.hasAuth && (
+                          <option value={blend.participants.userB.userId} className="bg-surface-elevated text-white">
+                            {blend.participants.userB.name}
+                          </option>
+                        )}
+                      </select>
+                    </label>
 
-            <div className="space-y-4 pt-2 border-t border-white/5">
-              <label className="block">
-                <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Playlist title</span>
-                <input
-                  value={playlistTitle}
-                  onChange={(event) => setPlaylistTitle(event.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
-                />
-              </label>
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Playlist title</span>
+                      <input
+                        value={playlistTitle}
+                        onChange={(event) => setPlaylistTitle(event.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
+                      />
+                    </label>
 
-              <label className="block">
-                <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Description</span>
-                <textarea
-                  value={playlistDescription}
-                  onChange={(event) => setPlaylistDescription(event.target.value)}
-                  rows={2}
-                  className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner resize-none"
-                />
-              </label>
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Description</span>
+                      <textarea
+                        value={playlistDescription}
+                        onChange={(event) => setPlaylistDescription(event.target.value)}
+                        rows={2}
+                        className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner resize-none"
+                      />
+                    </label>
+                  </div>
+                </details>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={exportState.status === "submitting"}
+                className="w-full rounded-full bg-white px-6 py-4 text-sm font-black tracking-wide text-black transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:bg-surface-border disabled:text-text-muted"
+              >
+                {exportState.status === "submitting" ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin"></span>
+                    Creating Playlist...
+                  </span>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                     <span className="text-xl leading-none -mt-0.5">+</span> Sync to YT Music
+                  </div>
+                )}
+              </button>
+
+              {exportState.message ? (
+                <p className={`text-xs font-medium text-center p-3 rounded-lg animate-fade-in-up ${exportState.status === "error" ? "bg-brand-ytred/10 text-brand-ytred border border-brand-ytred/20" : exportState.status === "success" ? "bg-brand-spotify/10 text-brand-spotify border border-brand-spotify/20" : "text-text-muted"}`}>
+                  {exportState.message}
+                </p>
+              ) : null}
+              {blend.youtubePlaylistId ? (
+                <p className="text-xs font-bold text-brand-spotify text-center uppercase tracking-wider mt-2 bg-brand-spotify/10 py-2 rounded-lg border border-brand-spotify/20">
+                  ✓ Synced: {blend.youtubePlaylistId}
+                </p>
+              ) : null}
             </div>
-
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={exportState.status === "submitting"}
-              className="w-full rounded-full bg-white px-6 py-3.5 text-sm font-bold text-black transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:bg-surface-border disabled:text-text-muted"
-            >
-              {exportState.status === "submitting" ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin"></span>
-                  Creating Playlist...
-                </span>
-              ) : "Create on YT Music"}
-            </button>
-
-            {exportState.message ? (
-              <p className={`text-xs font-medium text-center p-2 rounded-lg ${exportState.status === "error" ? "bg-brand-ytred/10 text-brand-ytred border border-brand-ytred/20" : exportState.status === "success" ? "bg-brand-spotify/10 text-brand-spotify border border-brand-spotify/20" : "text-text-muted"}`}>
-                {exportState.message}
-              </p>
-            ) : null}
-            {blend.youtubePlaylistId ? (
-              <p className="text-xs font-bold text-brand-spotify text-center uppercase tracking-wider">
-                ✓ Synced: {blend.youtubePlaylistId}
-              </p>
-            ) : null}
-          </div>
+          )}
         </SectionCard>
       </div>
 
