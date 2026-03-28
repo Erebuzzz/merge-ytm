@@ -26,6 +26,10 @@ def _service(db: Session) -> BlendService:
     return BlendService(db)
 
 
+@router.get("/")
+def read_root() -> dict[str, str]:
+    return {"status": "ok", "message": "Backend is running"}
+
 @router.get("/health")
 def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
