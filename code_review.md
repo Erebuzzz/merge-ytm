@@ -24,6 +24,7 @@ It was reviewed in the workspace with a mix of static inspection and deployment-
 - CORS middleware now treats `FRONTEND_URL="*"` as a deliberate wildcard case and disables credentials for that mode.
 - The Next.js auth upload page no longer depends on `useSearchParams()` during prerender, which avoids the build-time failure on `/auth-upload`.
 - The frontend now strips an accidental trailing `/api` from `NEXT_PUBLIC_API_BASE_URL`, which makes deploy configuration more forgiving while keeping the live backend on root routes.
+- The frontend auth layer also depends on `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET`, which must be set separately from the backend `SECRET_KEY`.
 - The frontend now serves `/favicon.ico` explicitly by redirecting it to the existing SVG icon.
 
 ### Why these fixes matter
@@ -34,6 +35,7 @@ It was reviewed in the workspace with a mix of static inspection and deployment-
 - Without the wildcard CORS branch, a temporary bootstrap deployment cannot call the API safely.
 - Without the auth upload page fix, the frontend production build fails during prerender.
 - Without API base URL normalization, production env setup is easy to misconfigure by pasting a backend URL that ends in `/api` even though the deployed backend serves root routes.
+- Without the Neon Auth frontend envs, the auth handler cannot initialize correctly even if the backend deploy is healthy.
 - Without an explicit favicon route, browsers fall back to `/favicon.ico` and log a visible 404 even though the project already has `icon.svg`.
 
 ### Current deployment state
@@ -72,6 +74,7 @@ It was reviewed in the workspace with a mix of static inspection and deployment-
 ### What to watch
 
 - The frontend assumes the backend is reachable at `NEXT_PUBLIC_API_BASE_URL`; failures are surfaced as messages but there is no retry UI yet.
+- The frontend auth path assumes `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` are configured; those values are now documented but still need to be added in Vercel.
 - There is no optimistic progress state for long-running async Celery jobs yet. The current UI uses the synchronous path for simplicity.
 - There is no authentication or share-link protection on result pages yet.
 

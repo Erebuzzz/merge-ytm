@@ -26,13 +26,16 @@ The backend must point at the `backend` directory. If it points at the repositor
 
 ### Frontend
 
-Add this variable to Preview and Production:
+Add these variables to Preview and Production:
 
 ```text
 NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain.vercel.app
+NEON_AUTH_BASE_URL=https://your-neon-auth-base-url
+NEON_AUTH_COOKIE_SECRET=replace-with-a-long-random-secret
 ```
 
 The frontend expects the backend root domain. If you accidentally include `/api`, the app strips that suffix before sending requests.
+The Neon Auth cookie secret is separate from the backend `SECRET_KEY`.
 
 ### Backend
 
@@ -98,6 +101,7 @@ Usually caused by one of these:
 Usually caused by one of these:
 
 - `NEXT_PUBLIC_API_BASE_URL` points at the wrong backend deployment
+- `NEON_AUTH_BASE_URL` or `NEON_AUTH_COOKIE_SECRET` is missing
 - `FRONTEND_URL` on the backend does not match the frontend domain
 - database or redis credentials are invalid
 

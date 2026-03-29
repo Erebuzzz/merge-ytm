@@ -175,8 +175,11 @@ Set the main values first:
 - `SECRET_KEY`
 - `FRONTEND_URL`
 - `NEXT_PUBLIC_API_BASE_URL`
+- `NEON_AUTH_BASE_URL`
+- `NEON_AUTH_COOKIE_SECRET`
 
 The frontend value should point at the backend root domain. If you accidentally include a trailing `/api`, the frontend strips it before making requests.
+The Neon Auth values are used by the frontend auth handler and are separate from the backend `SECRET_KEY`.
 
 ### Start infrastructure
 
@@ -235,7 +238,10 @@ For the full deployment checklist, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 - Root Directory: `frontend`
 - Framework Preset: `Next.js`
-- Environment Variable: `NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain.vercel.app`
+- Required Environment Variables:
+  - `NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain.vercel.app`
+  - `NEON_AUTH_BASE_URL=https://your-neon-auth-base-url`
+  - `NEON_AUTH_COOKIE_SECRET=replace-with-a-long-random-secret`
 
 ### Backend project
 

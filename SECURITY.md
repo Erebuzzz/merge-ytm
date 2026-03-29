@@ -18,6 +18,7 @@ Instead:
 - Never paste production secrets into issues or pull requests.
 - Store deploy-time secrets only in the platform environment variables.
 - Rotate `SECRET_KEY` carefully and document the operational impact before changing it.
+- Rotate `NEON_AUTH_COOKIE_SECRET` carefully because it affects frontend auth cookies independently of the backend `SECRET_KEY`.
 
 ## Auth Upload Expectations
 
