@@ -12,32 +12,36 @@ The repository now contains an initial full-stack implementation for:
 - YT Music integration wrapper
 - local infrastructure scaffolding
 
-It was reviewed in the workspace with a mix of static inspection and deployment-focused verification. The frontend production build completed successfully, and both Vercel deployments reached the `READY` state.
+It was reviewed in the workspace with a mix of static inspection and deployment-focused verification. The frontend production build completed successfully, and both Vercel deployments reached the `READY` state, but the backend Vercel project still needs one manual settings change before the API will serve traffic correctly.
 
 ## Deployment Review
 
 ### What changed for Vercel
 
-- `backend/api/index.py` now exposes the FastAPI application from a root-level `api/` directory, which is the explicit Vercel Functions layout for Python backends.
-- `backend/pyproject.toml` now defines a `project.scripts.app = "app.main:app"` export as a secondary explicit app mapping.
-- The FastAPI router is mounted under `/api`, which matches the Vercel function path and keeps the public deployment layout consistent.
+- The backend is expected to run from the `backend` project root, with `backend/vercel.json` rewriting all requests to `app/main.py`.
+- The backend exposes `/` and `/health`, so the bare deployment domain no longer looks broken once the project points at the correct root directory.
 - The SQLAlchemy session setup now handles SQLite correctly by setting `check_same_thread=False` when `DATABASE_URL` points at SQLite.
 - CORS middleware now treats `FRONTEND_URL="*"` as a deliberate wildcard case and disables credentials for that mode.
 - The Next.js auth upload page no longer depends on `useSearchParams()` during prerender, which avoids the build-time failure on `/auth-upload`.
+- The frontend now strips an accidental trailing `/api` from `NEXT_PUBLIC_API_BASE_URL`, which makes deploy configuration more forgiving while keeping the live backend on root routes.
+- The frontend now serves `/favicon.ico` explicitly by redirecting it to the existing SVG icon.
 
 ### Why these fixes matter
 
-- Without a root-level Python function entrypoint under `api/`, Vercel can treat the backend folder like a static project and emit no API function output.
+- Without the backend project root set to `backend`, Vercel treats the repo root like a generic static project and emits no FastAPI function output.
+- Without the backend rewrite in `backend/vercel.json`, requests do not reach `app/main.py` consistently on Vercel.
 - Without the SQLite-specific engine option, the lightweight serverless database path is fragile.
 - Without the wildcard CORS branch, a temporary bootstrap deployment cannot call the API safely.
 - Without the auth upload page fix, the frontend production build fails during prerender.
+- Without API base URL normalization, production env setup is easy to misconfigure by pasting a backend URL that ends in `/api` even though the deployed backend serves root routes.
+- Without an explicit favicon route, browsers fall back to `/favicon.ico` and log a visible 404 even though the project already has `icon.svg`.
 
 ### Current deployment state
 
 - the frontend production deployment is building successfully on Vercel
 - the backend production deployment is marked `READY` on Vercel
-- the frontend was verified by fetching the live deployment output
-- direct backend HTTP verification is still blocked by Vercel deployment protection, so the platform-side deployment state is the current confirmation point
+- the frontend project is correctly configured with `Root Directory = frontend`
+- the backend project is currently configured with `Root Directory = .` and needs to be changed to `backend` before the next redeploy
 
 ## Backend Review
 

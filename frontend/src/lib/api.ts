@@ -5,7 +5,12 @@ import type {
   PlaylistFetchResponse,
 } from "@/types/blend";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+function resolveApiBaseUrl(baseUrl: string): string {
+  const trimmedBaseUrl = baseUrl.trim().replace(/\/+$/, "");
+  return trimmedBaseUrl.endsWith("/api") ? trimmedBaseUrl.slice(0, -4) : trimmedBaseUrl;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000");
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) {

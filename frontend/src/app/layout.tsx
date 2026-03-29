@@ -19,6 +19,10 @@ const display = Space_Grotesk({
 export const metadata: Metadata = {
   title: "YTMusic Sync",
   description: "Create a private shared blend playlist from YouTube Music listening data.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
