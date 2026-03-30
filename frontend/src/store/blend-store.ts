@@ -4,11 +4,17 @@ import type { BlendDetail, CreateBlendPayload, ParticipantDraft } from "@/types/
 
 type ParticipantKey = "userA" | "userB";
 
+export type TrackAction = "like" | "dislike" | "skip";
+
 type BlendStore = {
   draft: CreateBlendPayload;
   result: BlendDetail | null;
   isSubmitting: boolean;
   error: string | null;
+  trackFeedback: Record<string, TrackAction | null>;
+  blendRating: number | null;
+  blendQuickOption: "accurate" | "missed_vibe" | null;
+  hasSubmittedFeedback: boolean;
   setParticipantName: (key: ParticipantKey, name: string) => void;
   setPlaylistLink: (key: ParticipantKey, index: number, value: string) => void;
   addPlaylistLink: (key: ParticipantKey) => void;
@@ -17,6 +23,10 @@ type BlendStore = {
   setResult: (result: BlendDetail | null) => void;
   setSubmitting: (value: boolean) => void;
   setError: (value: string | null) => void;
+  setTrackFeedback: (trackId: string, action: TrackAction | null) => void;
+  setBlendRating: (rating: number | null) => void;
+  setBlendQuickOption: (option: "accurate" | "missed_vibe" | null) => void;
+  setHasSubmittedFeedback: (value: boolean) => void;
   reset: () => void;
 };
 
@@ -36,6 +46,10 @@ export const useBlendStore = create<BlendStore>((set) => ({
   result: null,
   isSubmitting: false,
   error: null,
+  trackFeedback: {},
+  blendRating: null,
+  blendQuickOption: null,
+  hasSubmittedFeedback: false,
   setParticipantName: (key, name) =>
     set((state) => ({
       draft: {
@@ -101,5 +115,12 @@ export const useBlendStore = create<BlendStore>((set) => ({
   setResult: (result) => set({ result }),
   setSubmitting: (value) => set({ isSubmitting: value }),
   setError: (value) => set({ error: value }),
-  reset: () => set({ draft: createDraft(), result: null, isSubmitting: false, error: null }),
+  setTrackFeedback: (trackId, action) =>
+    set((state) => ({
+      trackFeedback: { ...state.trackFeedback, [trackId]: action },
+    })),
+  setBlendRating: (rating) => set({ blendRating: rating }),
+  setBlendQuickOption: (option) => set({ blendQuickOption: option }),
+  setHasSubmittedFeedback: (value) => set({ hasSubmittedFeedback: value }),
+  reset: () => set({ draft: createDraft(), result: null, isSubmitting: false, error: null, trackFeedback: {}, blendRating: null, blendQuickOption: null, hasSubmittedFeedback: false }),
 }));

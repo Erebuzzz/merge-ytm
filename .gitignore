@@ -1,25 +1,69 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
 .next/
+out/
 dist/
 build/
-coverage/
-.turbo/
+*.egg-info/
 
+# ── Test / coverage ───────────────────────────────────────────────────────────
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.hypothesis/
+
+# ── Python ────────────────────────────────────────────────────────────────────
 .venv/
 venv/
+env/
 __pycache__/
-*.pyc
-.pytest_cache/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytype/
 
+# ── Environment files ─────────────────────────────────────────────────────────
 .env
 .env.local
 .env.*.local
+backend/.env
+frontend/.env.local
 
-backend/.mypy_cache/
-backend/.ruff_cache/
-
-frontend/.swc/
-
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
-Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── OS artifacts ──────────────────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── Next.js ───────────────────────────────────────────────────────────────────
+frontend/.swc/
+frontend/tsconfig.tsbuildinfo
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+.turbo/
+*.local

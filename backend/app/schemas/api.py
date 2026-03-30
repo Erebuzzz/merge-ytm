@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+YTM_PLAYLIST_PATTERN = re.compile(
+    r"^(https://music\.youtube\.com/(playlist\?list=|watch\?.*list=)[A-Za-z0-9_\-]+|[A-Za-z0-9_\-]{10,})"
+)
 
 
 class TrackPayload(BaseModel):
@@ -28,11 +33,19 @@ class ParticipantSourceInput(BaseModel):
     playlist_links: list[str] = Field(default_factory=list)
     include_liked_songs: bool = False
 
-    @model_validator(mode="after")
-    def validate_links(self) -> "ParticipantSourceInput":
-        if len(self.playlist_links) > 5:
+    @field_validator("playlist_links", mode="before")
+    @classmethod
+    def validate_playlist_links(cls, links: list) -> list:
+        if len(links) > 5:
             raise ValueError("A maximum of 5 playlist links is supported per user.")
-        return self
+        errors = []
+        for i, link in enumerate(links):
+            link_str = str(link).strip()
+            if link_str and not YTM_PLAYLIST_PATTERN.match(link_str):
+                errors.append(f"Link {i + 1} is not a valid YouTube Music playlist URL: {link_str!r}")
+        if errors:
+            raise ValueError("; ".join(errors))
+        return links
 
 
 class BlendCreateRequest(BaseModel):
@@ -116,5 +129,21 @@ class YTMusicPlaylistCreateResponse(BaseModel):
     blend_id: str = Field(alias="blendId")
     playlist_id: str = Field(alias="playlistId")
     status: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TrackFeedbackRequest(BaseModel):
+    blend_id: str = Field(alias="blendId")
+    track_id: str = Field(alias="trackId")
+    action: str  # "like" | "dislike" | "skip"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class BlendFeedbackRequest(BaseModel):
+    blend_id: str = Field(alias="blendId")
+    rating: int | None = Field(default=None, ge=1, le=5)
+    quick_option: str | None = Field(default=None, alias="quickOption")
 
     model_config = ConfigDict(populate_by_name=True)

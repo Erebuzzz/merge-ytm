@@ -1,1 +1,1 @@
-"""YTMusic Sync backend package."""
+"""Merge backend package."""

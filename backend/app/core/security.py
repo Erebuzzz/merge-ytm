@@ -30,3 +30,26 @@ def decrypt_auth_payload(token: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("The decrypted auth payload is not a JSON object.")
     return parsed
+
+
+# ---------------------------------------------------------------------------
+# File size validation
+# ---------------------------------------------------------------------------
+
+MAX_AUTH_FILE_SIZE_BYTES = 1 * 1024 * 1024  # 1 MB
+
+
+def validate_auth_file_size(size_bytes: int) -> None:
+    """Raise ValueError if the file exceeds the maximum allowed size."""
+    if size_bytes > MAX_AUTH_FILE_SIZE_BYTES:
+        raise ValueError(
+            f"Auth file too large: {size_bytes} bytes (max {MAX_AUTH_FILE_SIZE_BYTES} bytes / 1 MB)."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Convenience aliases for backward compatibility
+# ---------------------------------------------------------------------------
+
+encrypt_auth = encrypt_auth_payload
+decrypt_auth = decrypt_auth_payload

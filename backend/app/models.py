@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, func, Boolean
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def generate_uuid() -> str:
@@ -110,3 +110,41 @@ class Blend(TimestampMixin, Base):
 
     participant_a: Mapped["User"] = relationship(foreign_keys=[participant_a_id])
     participant_b: Mapped["User"] = relationship(foreign_keys=[participant_b_id])
+
+
+class Job(TimestampMixin, Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    job_type: Mapped[str] = mapped_column(String(20))   # "fetch" | "generate" | "export"
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # "pending" | "running" | "done" | "failed"
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    blend_id: Mapped[str] = mapped_column(ForeignKey("blends.id", ondelete="CASCADE"), index=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    celery_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    blend: Mapped["Blend"] = relationship(foreign_keys=[blend_id])
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_id])
+
+
+class TrackFeedback(TimestampMixin, Base):
+    __tablename__ = "track_feedback"
+    __table_args__ = (UniqueConstraint("user_id", "blend_id", "track_id", name="uq_track_feedback"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    blend_id: Mapped[str] = mapped_column(ForeignKey("blends.id", ondelete="CASCADE"), index=True)
+    track_id: Mapped[str] = mapped_column(String(512))  # normalized_key of the track
+    action: Mapped[str] = mapped_column(String(20))  # "like" | "dislike" | "skip"
+
+
+class BlendFeedback(TimestampMixin, Base):
+    __tablename__ = "blend_feedback"
+    __table_args__ = (UniqueConstraint("user_id", "blend_id", name="uq_blend_feedback"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    blend_id: Mapped[str] = mapped_column(ForeignKey("blends.id", ondelete="CASCADE"), index=True)
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1-5 stars
+    quick_option: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "accurate" | "missed_vibe"

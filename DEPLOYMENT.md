@@ -1,32 +1,34 @@
 # Deployment Guide
 
-This repository is deployed as two separate Vercel projects:
+Merge deploys as two separate Vercel projects:
 
-- `ytmusic-sync-frontend`
-- `ytmusic-sync-backend`
+- `merge-frontend` — Next.js app, root directory `frontend`
+- `merge-backend` — FastAPI app, root directory `backend`
 
-The backend must point at the `backend` directory. If it points at the repository root, Vercel can finish the build quickly and still serve a platform `NOT_FOUND` page for every route.
+The backend **must** point at the `backend` directory. If it points at the repo root, Vercel serves a `NOT_FOUND` page for every route.
 
-## Project Settings
+## Project settings
 
 ### Frontend
 
-- Project name: `ytmusic-sync-frontend`
-- Root Directory: `frontend`
-- Framework Preset: `Next.js`
+| Setting | Value |
+|---|---|
+| Project name | `merge-frontend` |
+| Root Directory | `frontend` |
+| Framework Preset | `Next.js` |
 
 ### Backend
 
-- Project name: `ytmusic-sync-backend`
-- Root Directory: `backend`
-- Framework Preset: `Other`
-- Request routing: `backend/vercel.json` rewrites `/(.*)` to `app/main.py`
+| Setting | Value |
+|---|---|
+| Project name | `merge-backend` |
+| Root Directory | `backend` |
+| Framework Preset | `Other` |
+| Request routing | `backend/vercel.json` rewrites `/(.*) → app/main.py` |
 
-## Environment Variables
+## Environment variables
 
 ### Frontend
-
-Add these variables to Preview and Production:
 
 ```text
 NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain.vercel.app
@@ -34,30 +36,28 @@ NEON_AUTH_BASE_URL=https://your-neon-auth-base-url
 NEON_AUTH_COOKIE_SECRET=replace-with-a-long-random-secret
 ```
 
-The frontend expects the backend root domain. If you accidentally include `/api`, the app strips that suffix before sending requests.
-The Neon Auth cookie secret is separate from the backend `SECRET_KEY`.
+- The frontend expects the backend **root domain** — do not include `/api`. The app strips a trailing `/api` automatically if you paste it by mistake.
+- `NEON_AUTH_COOKIE_SECRET` is independent of the backend `SECRET_KEY`.
 
-You also need to trust the frontend origins in Neon Auth:
+**Neon Auth trusted origins** — add all of these:
 
-- `http://localhost:3000` for local development
+- `http://localhost:3000` (local development)
 - your production frontend domain
-- each active preview deployment domain if you manage Neon Auth manually
-
-If you connected Neon Auth through the Neon and Vercel integration with auth enabled, Neon can inject `NEON_AUTH_BASE_URL` and add trusted production and preview domains automatically. Manual setups still need these origins added explicitly.
+- each active Vercel preview URL (or use the Neon + Vercel integration to handle previews automatically)
 
 ### Backend
 
-Add these required variables to Preview and Production:
+Required:
 
 ```text
-DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/ytmusic_sync
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/merge
 REDIS_URL=redis://default:PASSWORD@HOST:6379/0
 SECRET_KEY=replace-with-a-long-random-secret
 FRONTEND_URL=https://your-frontend-domain.vercel.app
 DEBUG=false
 ```
 
-Optional tuning variables:
+Optional tuning:
 
 ```text
 MAX_PLAYLIST_LINKS=5
@@ -67,67 +67,78 @@ MAX_TRACKS_PER_SECTION=20
 YTMUSIC_RETRY_ATTEMPTS=3
 ```
 
-## Recommended Deploy Order
+## Recommended deploy order
 
-1. Update backend project settings and env variables.
+1. Set backend project root to `backend` and configure env variables.
 2. Deploy the backend.
-3. Update frontend env variables.
+3. Set frontend env variables (use the deployed backend URL for `NEXT_PUBLIC_API_BASE_URL`).
 4. Deploy the frontend.
+5. Add the deployed frontend URL to Neon Auth trusted origins.
 
-## Smoke Checks
+## Smoke checks
 
 After backend deploy:
 
-```text
-GET https://your-backend-domain.vercel.app/
-GET https://your-backend-domain.vercel.app/health
 ```
+GET https://your-backend-domain.vercel.app/
+→ {"status":"ok","message":"Backend is running"}
 
-Expected behavior:
-
-- `/` returns `{"status":"ok","message":"Backend is running"}`
-- `/health` returns `{"status":"ok"}`
+GET https://your-backend-domain.vercel.app/health
+→ {"status":"ok"}
+```
 
 After frontend deploy:
 
-- load the homepage
-- confirm the browser console no longer shows `/favicon.ico` as a 404
-- confirm create blend requests reach the backend successfully
+- Homepage loads without errors
+- No `/favicon.ico` 404 in the browser console
+- Creating a blend reaches the backend successfully
 
-## Common Failure Modes
+## Common failure modes
 
-### Backend alias shows `NOT_FOUND`
+### Backend shows `NOT_FOUND`
 
-Usually caused by one of these:
+- Backend project root is set to `.` instead of `backend`
+- Backend env variables are missing
+- Wrong Vercel project was redeployed
 
-- backend project root is set to `.`
-- backend project env variables are missing
-- the wrong Vercel project was redeployed
+### API calls fail from the frontend
 
-### Frontend can load but API calls fail
-
-Usually caused by one of these:
-
-- `NEXT_PUBLIC_API_BASE_URL` points at the wrong backend deployment
+- `NEXT_PUBLIC_API_BASE_URL` points at the wrong backend URL
 - `NEON_AUTH_BASE_URL` or `NEON_AUTH_COOKIE_SECRET` is missing
-- `FRONTEND_URL` on the backend does not match the frontend domain
-- database or redis credentials are invalid
+- `FRONTEND_URL` on the backend does not match the deployed frontend domain
+- Database or Redis credentials are invalid
 
-### Auth endpoints return `403` with `Invalid origin`
+### Auth returns `403 Invalid origin`
 
-Usually caused by one of these:
+- The current frontend URL is not in Neon Auth trusted origins
+- `NEON_AUTH_BASE_URL` points at a different Neon Auth environment
+- You are testing from a preview URL that was never added to trusted origins
 
-- the current frontend URL is missing from Neon Auth trusted origins
-- `NEON_AUTH_BASE_URL` points at a different Neon Auth environment than the one you configured
-- you are testing from a Vercel preview URL that was never added to trusted origins
+Fix: open the exact URL you are using, add it to Neon Auth trusted origins, and retry.
 
-Recommended checks:
+### `/favicon.ico` 404 in console
 
-1. Open the deployed frontend URL you are actually using.
-2. Add that exact origin to Neon Auth trusted origins.
-3. Keep `http://localhost:3000` trusted for local development.
-4. If you rely on preview deployments, trust each preview origin or switch to the Neon and Vercel auth integration so previews are wired automatically.
+The frontend serves `/favicon.ico` explicitly. If you still see the 404, the deployment is serving a stale build — trigger a redeploy.
 
-### Browser logs `/favicon.ico` 404
+## Infrastructure notes
 
-The frontend now includes a dedicated `/favicon.ico` route. If you still see the 404 after these changes, the frontend deployment is still serving an older build.
+### Database
+
+Merge uses PostgreSQL. Recommended providers: Neon, Supabase, Railway.
+
+Tables are created automatically on startup via `Base.metadata.create_all()`. For production, replace this with Alembic migrations.
+
+### Redis
+
+Required for Celery job queuing and rate limiting. Recommended providers: Upstash, Railway, Render.
+
+If `REDIS_URL` is not set, Celery tasks are disabled and the app falls back to synchronous processing. Rate limiting fails open (requests are allowed through) when Redis is unavailable.
+
+### Celery worker
+
+The Vercel backend does not run a persistent Celery worker. For async job processing in production, deploy a separate worker process on Railway, Render, or Fly.io pointing at the same `DATABASE_URL` and `REDIS_URL`.
+
+```bash
+cd backend
+celery -A app.tasks worker --loglevel=info
+```

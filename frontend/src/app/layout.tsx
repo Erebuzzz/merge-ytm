@@ -17,8 +17,8 @@ const display = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "YTMusic Sync",
-  description: "Create a private shared blend playlist from YouTube Music listening data.",
+  title: "Merge",
+  description: "Create playlists from your combined music taste on YouTube Music.",
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
@@ -35,9 +35,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           <aside className="w-64 flex-shrink-0 flex flex-col bg-surface-elevated/80 backdrop-blur-xl border-r border-surface-border relative z-20">
             <div className="p-6">
               <Link href="/" className="space-y-1 block mb-8 hover:opacity-80 transition-opacity">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Private music blend</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">Create playlists from your combined music taste on YouTube Music</p>
                 <p className="font-display text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-spotify to-brand-ytmusic">
-                  YTMusic Sync
+                  Merge
                 </p>
               </Link>
 
@@ -55,8 +55,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
                   <a href="https://discord.com/users/1206267175267074049" target="_blank" rel="noreferrer" title="Discord" className="hover:text-[#5865F2] transition-colors tracking-tighter">Discord</a>
                 </div>
                 <div className="text-xs text-text-muted mt-1">
-                  <a href="https://github.com/Erebuzzz/ytmusic-sync" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-brand-spotify transition-colors font-semibold">
-                    ⭐ Star YTMusic Sync
+                  <a href="https://github.com/Erebuzzz/merge" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-brand-spotify transition-colors font-semibold">
+                    ⭐ Star Merge
                   </a>
                 </div>
               </div>

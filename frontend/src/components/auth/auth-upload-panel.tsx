@@ -101,6 +101,19 @@ export function AuthUploadPanel({ presetUserId = "" }: AuthUploadPanelProps) {
 
           <form className="space-y-6 pt-4 border-t border-white/5" onSubmit={handleSubmit}>
 
+            {/* Security Warning Banner */}
+            <div className="rounded-2xl border border-brand-ytred/30 bg-brand-ytred/10 px-5 py-4 flex gap-3 items-start">
+              <span className="text-brand-ytred text-lg flex-shrink-0 mt-0.5">⚠️</span>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-brand-ytred">Security Warning</p>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  This file contains your YouTube Music session credentials. Only upload it on a device you trust.
+                  Your credentials are encrypted immediately on upload and are never stored in plaintext.
+                  Do not share this file with anyone.
+                </p>
+              </div>
+            </div>
+
             <label className="block">
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-text-muted">Auth file (.json)</span>
               <div className="relative group cursor-pointer">

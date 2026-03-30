@@ -157,7 +157,26 @@ class BlendService:
         if not user_a_tracks and not user_b_tracks:
             raise ValueError("No tracks were available to generate the blend.")
 
-        result = generate_blend(user_a_tracks, user_b_tracks)
+        # Compute feedback boosts from user A's feedback history
+        from app.models import TrackFeedback
+        from sqlalchemy import select as sa_select
+
+        feedback_rows = self.db.scalars(
+            sa_select(TrackFeedback).where(
+                TrackFeedback.user_id == blend.participant_a_id,
+                TrackFeedback.blend_id == blend.id,
+            )
+        ).all()
+        feedback_boosts = {}
+        for row in feedback_rows:
+            if row.action == "like":
+                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) + 10.0
+            elif row.action == "dislike":
+                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) - 10.0
+            elif row.action == "skip":
+                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) - 5.0
+
+        result = generate_blend(user_a_tracks, user_b_tracks, feedback_boosts=feedback_boosts)
         sections = result["sections"]
         blend.tracks_common = [track.model_dump(by_alias=True) for track in sections[0].tracks]
         blend.tracks_a = [track.model_dump(by_alias=True) for track in sections[1].tracks]
@@ -204,7 +223,7 @@ class BlendService:
 
         tracks = self._flatten_blend_tracks(blend)
         service = YTMusicService(auth_headers=decrypt_auth_payload(user.encrypted_auth))
-        description = payload.description or "A private blend created by YTMusic Sync."
+        description = payload.description or "A private blend created by Merge."
         playlist_id = service.create_private_playlist(payload.title, description, tracks)
 
         blend.youtube_playlist_id = playlist_id
@@ -298,6 +317,18 @@ class BlendService:
         for payload in [blend.tracks_common, blend.tracks_a, blend.tracks_b, blend.tracks_recommended]:
             combined.extend(TrackPayload.model_validate(item) for item in payload or [])
         return combined
+
+    def submit_feedback(self, user_id: str, blend_id: str, track_id: str, action: str) -> dict:
+        from app.services.feedback_service import FeedbackService
+        service = FeedbackService(self.db)
+        record = service.record_track_feedback(user_id, blend_id, track_id, action)
+        return {"status": "toggled_off" if record is None else "recorded"}
+
+    def submit_blend_feedback(self, user_id: str, blend_id: str, rating: int | None, quick_option: str | None) -> dict:
+        from app.services.feedback_service import FeedbackService
+        service = FeedbackService(self.db)
+        service.record_blend_feedback(user_id, blend_id, rating, quick_option)
+        return {"status": "recorded"}
 
     @staticmethod
     def _participant_has_source(participant: ParticipantSourceInput) -> bool:

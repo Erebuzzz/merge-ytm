@@ -37,13 +37,16 @@ def _score_track(
     opposite_pool: list[TrackPayload],
     common_pool: list[TrackPayload],
     overlap_ratio: float,
+    track_frequency: int = 1,
+    max_frequency: int = 1,
 ) -> TrackPayload:
     artist_similarity = max(
         _artist_similarity(track, opposite_pool),
         _artist_similarity(track, common_pool),
     )
     diversity_factor = _diversity_factor(track, own_pool)
-    score = (0.5 * overlap_ratio) + (artist_similarity * 0.3) + (diversity_factor * 0.2)
+    frequency_weight = (track_frequency - 1) / max_frequency * 0.1 if max_frequency > 0 else 0.0
+    score = (0.5 * overlap_ratio) + (0.3 * artist_similarity) + (0.2 * diversity_factor) + frequency_weight
     return track.model_copy(update={"score": round(score * 100, 2)})
 
 
@@ -54,7 +57,11 @@ def _section_limit(common_count: int) -> tuple[int, int]:
     return common_limit, side_limit
 
 
-def generate_blend(tracks_a: list[TrackPayload], tracks_b: list[TrackPayload]) -> dict[str, object]:
+def generate_blend(
+    tracks_a: list[TrackPayload],
+    tracks_b: list[TrackPayload],
+    feedback_boosts: dict[str, float] | None = None,
+) -> dict[str, object]:
     unique_a = deduplicate_tracks(tracks_a)
     unique_b = deduplicate_tracks(tracks_b)
 
@@ -66,19 +73,44 @@ def generate_blend(tracks_a: list[TrackPayload], tracks_b: list[TrackPayload]) -
     exclusive_a = [track for key, track in keyed_a.items() if key not in common_keys]
     exclusive_b = [track for key, track in keyed_b.items() if key not in common_keys]
 
+    # Compatibility score: Dice coefficient formula (Req 8.5)
+    denom = len(unique_a) + len(unique_b)
+    compatibility_score = 2 * len(common_tracks) / denom * 100 if denom > 0 else 0.0
+
+    # overlap_ratio used for scoring (internal metric, not the compatibility score)
     total_unique_tracks = len(set(keyed_a) | set(keyed_b))
     overlap_ratio = len(common_tracks) / total_unique_tracks if total_unique_tracks else 1.0
 
+    # Compute track frequency across all input tracks (before deduplication) for Req 8.8
+    all_input_keys = [t.normalized_key for t in tracks_a + tracks_b if t.normalized_key]
+    track_freq: Counter[str] = Counter(all_input_keys)
+    max_freq = max(track_freq.values(), default=1)
+
+    def _score_with_freq(track: TrackPayload, own_pool: list[TrackPayload], opp_pool: list[TrackPayload]) -> TrackPayload:
+        freq = track_freq.get(track.normalized_key or "", 1)
+        return _score_track(track, own_pool, opp_pool, common_tracks, overlap_ratio, freq, max_freq)
+
     scored_a = sorted(
-        (_score_track(track, exclusive_a, exclusive_b, common_tracks, overlap_ratio) for track in exclusive_a),
+        (_score_with_freq(track, exclusive_a, exclusive_b) for track in exclusive_a),
         key=lambda track: (track.score or 0, track.artist.lower(), track.title.lower()),
         reverse=True,
     )
     scored_b = sorted(
-        (_score_track(track, exclusive_b, exclusive_a, common_tracks, overlap_ratio) for track in exclusive_b),
+        (_score_with_freq(track, exclusive_b, exclusive_a) for track in exclusive_b),
         key=lambda track: (track.score or 0, track.artist.lower(), track.title.lower()),
         reverse=True,
     )
+
+    # Apply feedback boosts (Req 8.9)
+    if feedback_boosts:
+        def _apply_boost(track: TrackPayload) -> TrackPayload:
+            boost = feedback_boosts.get(track.normalized_key or "", 0.0)
+            if boost:
+                return track.model_copy(update={"score": round((track.score or 0) + boost, 2)})
+            return track
+
+        scored_a = sorted(map(_apply_boost, scored_a), key=lambda t: (t.score or 0), reverse=True)
+        scored_b = sorted(map(_apply_boost, scored_b), key=lambda t: (t.score or 0), reverse=True)
 
     common_limit, side_limit = _section_limit(len(common_tracks))
     sections = [
@@ -100,7 +132,7 @@ def generate_blend(tracks_a: list[TrackPayload], tracks_b: list[TrackPayload]) -
     ]
 
     return {
-        "compatibility_score": round(overlap_ratio * 100, 2),
+        "compatibility_score": round(compatibility_score, 2),
         "sections": sections,
         "diagnostics": {
             "commonCount": len(common_tracks),

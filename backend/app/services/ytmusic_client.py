@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from collections.abc import Iterable
@@ -13,6 +14,8 @@ from ytmusicapi import YTMusic
 from app.core.config import get_settings
 from app.schemas.api import TrackPayload
 from app.services.normalization import build_normalized_key, track_from_ytmusic
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -59,6 +62,16 @@ class YTMusicService:
             track = track_from_ytmusic(item, source=playlist_url)
             if track:
                 tracks.append(track)
+        total = len(payload.get("tracks", []))
+        valid = len(tracks)
+        skipped = total - valid
+        if total > 0:
+            logger.info(
+                "Playlist fetch complete: source=%s total=%d valid=%d skipped=%d success_rate=%.1f%% missing_ratio=%.1f%%",
+                playlist_url, total, valid, skipped,
+                valid / total * 100,
+                skipped / total * 100,
+            )
         return tracks
 
     @retry(stop=stop_after_attempt(settings.ytmusic_retry_attempts), wait=wait_exponential(min=1, max=8), reraise=True)
@@ -69,6 +82,16 @@ class YTMusicService:
             track = track_from_ytmusic(item, source="liked_songs")
             if track:
                 tracks.append(track)
+        total = len(payload.get("tracks", []))
+        valid = len(tracks)
+        skipped = total - valid
+        if total > 0:
+            logger.info(
+                "Liked songs fetch complete: total=%d valid=%d skipped=%d success_rate=%.1f%% missing_ratio=%.1f%%",
+                total, valid, skipped,
+                valid / total * 100,
+                skipped / total * 100,
+            )
         return tracks
 
     def _validate_track(self, client: YTMusic, track: TrackPayload) -> str | None:

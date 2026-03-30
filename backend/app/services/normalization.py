@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 from rapidfuzz import fuzz
@@ -20,15 +21,23 @@ def _compact_whitespace(value: str) -> str:
     return WHITESPACE_PATTERN.sub(" ", value).strip()
 
 
+def _nfkd_lower(value: str) -> str:
+    """Apply NFKD normalization, strip combining marks, then lowercase."""
+    nfkd = unicodedata.normalize("NFKD", value)
+    stripped = "".join(ch for ch in nfkd if unicodedata.category(ch) != "Mn")
+    return stripped.lower()
+
+
 def normalize_title(title: str) -> str:
-    cleaned = TITLE_NOISE_PATTERN.sub(" ", title.lower())
+    cleaned = TITLE_NOISE_PATTERN.sub(" ", _nfkd_lower(title))
     cleaned = NON_WORD_PATTERN.sub(" ", cleaned)
     return _compact_whitespace(cleaned)
 
 
 def normalize_artist(artist: str) -> str:
-    primary_artist = ARTIST_SEPARATOR_PATTERN.split(artist.lower())[0]
-    primary_artist = NON_WORD_PATTERN.sub(" ", primary_artist)
+    cleaned = NON_WORD_PATTERN.sub(" ", _nfkd_lower(artist))
+    cleaned = _compact_whitespace(cleaned)
+    primary_artist = ARTIST_SEPARATOR_PATTERN.split(cleaned)[0]
     return _compact_whitespace(primary_artist)
 
 
@@ -70,8 +79,15 @@ def track_from_ytmusic(item: dict[str, Any], source: str | None = None) -> Track
     if not title:
         return None
 
+    video_id = item.get("videoId")
+    if not video_id:  # Req 6.3: skip tracks missing videoId
+        return None
+
     artists = item.get("artists") or []
-    artist_name = ", ".join(entry.get("name", "") for entry in artists if entry.get("name")) or item.get("artist") or "Unknown Artist"
+    artist_name = ", ".join(entry.get("name", "") for entry in artists if entry.get("name")) or item.get("artist") or ""
+    if not artist_name:  # Req 6.3: skip tracks missing artist
+        return None
+
     metadata = {
         "album": (item.get("album") or {}).get("name") if isinstance(item.get("album"), dict) else item.get("album"),
         "duration": item.get("duration"),

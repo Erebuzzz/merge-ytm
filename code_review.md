@@ -1,134 +1,120 @@
 # Code Review Notes
 
-This document is a collaborator-focused review of the current scaffold.
+Collaborator-focused technical review of the current codebase. Updated after the Merge rebrand and refactor.
 
-## Scope
+## What was built
 
-The repository now contains an initial full-stack implementation for:
+This refactor delivered the full rebrand from "YTMusic Sync" to "Merge" plus a set of new backend capabilities:
 
-- frontend flow
-- backend API
-- blend generation logic
-- YT Music integration wrapper
-- local infrastructure scaffolding
+- Auth middleware (`core/auth_middleware.py`) — session token validation on all protected routes
+- Rate limiter middleware (`core/rate_limiter.py`) — per-user (60/min) and per-IP (100/min) via Redis
+- Feedback system — `TrackFeedback` and `BlendFeedback` models, `FeedbackService`, and `/feedback/track` + `/feedback/blend` routes
+- Async job tracking — `Job` model, Celery tasks write status/progress, `GET /job/{job_id}` polling endpoint
+- Ownership checks — blend and playlist-source routes enforce participant membership
+- Security hardening — auth file size validation (1 MB cap), CORS restricted to `FRONTEND_URL` in production
+- Normalization improvements — NFKD unicode normalization, skip tracks missing `videoId` or `artist`
+- Blend engine updates — Dice coefficient compatibility score, frequency weighting, feedback boosts
+- Frontend feedback UI — inline track controls (👍 👎 ⏭), blend rating widget, Zustand feedback state
+- Property-based test suite — 13 correctness properties covering normalization, blend engine, feedback, auth, rate limiting, and ownership
 
-It was reviewed in the workspace with a mix of static inspection and deployment-focused verification. The frontend production build completed successfully, and both Vercel deployments reached the `READY` state, but the backend Vercel project still needs one manual settings change before the API will serve traffic correctly.
+## Architecture
 
-## Deployment Review
+```
+Frontend (Next.js + Zustand)
+  └── FastAPI backend
+        ├── RateLimiter middleware (Redis)
+        ├── AuthMiddleware (neon_auth.session)
+        └── Routes
+              ├── BlendService
+              │     ├── BlendEngine
+              │     ├── NormalizationService
+              │     ├── YTMusicService
+              │     └── FeedbackService
+              └── Celery (async jobs via Redis)
+                    └── Job table (PostgreSQL)
+```
 
-### What changed for Vercel
+## What is solid
 
-- The backend is expected to run from the `backend` project root, with `backend/vercel.json` rewriting all requests to `app/main.py`.
-- The backend exposes `/` and `/health`, so the bare deployment domain no longer looks broken once the project points at the correct root directory.
-- The SQLAlchemy session setup now handles SQLite correctly by setting `check_same_thread=False` when `DATABASE_URL` points at SQLite.
-- CORS middleware now treats `FRONTEND_URL="*"` as a deliberate wildcard case and disables credentials for that mode.
-- The Next.js auth upload page no longer depends on `useSearchParams()` during prerender, which avoids the build-time failure on `/auth-upload`.
-- The frontend now strips an accidental trailing `/api` from `NEXT_PUBLIC_API_BASE_URL`, which makes deploy configuration more forgiving while keeping the live backend on root routes.
-- The frontend auth layer also depends on `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET`, which must be set separately from the backend `SECRET_KEY`.
-- The Neon Auth deployment also needs trusted frontend origins configured outside the repo. Missing local, production, or preview origins lead to `403 Invalid origin` on `/api/auth/*`.
-- The frontend now serves `/favicon.ico` explicitly by redirecting it to the existing SVG icon.
+**Backend:**
+- Service layer is well-separated — routes are thin, logic lives in services
+- Auth middleware is a FastAPI dependency (not middleware), which makes it easy to exclude specific routes
+- Rate limiter fails open when Redis is unavailable — the API stays up
+- Feedback service uses upsert semantics with toggle behavior for track actions
+- Blend engine scoring formula matches the spec exactly
+- Property-based tests cover all 13 correctness properties from the design doc
+- YTMusicService has 3-retry exponential backoff on all `ytmusicapi` calls
 
-### Why these fixes matter
+**Frontend:**
+- Feedback controls are hover-visible and non-blocking
+- Job polling uses exponential backoff (1s → 2s → 4s → 8s → max 10s, 10-min timeout)
+- Client-side URL validation mirrors backend Pydantic validation
+- Zustand store is minimal — only shared cross-component state
 
-- Without the backend project root set to `backend`, Vercel treats the repo root like a generic static project and emits no FastAPI function output.
-- Without the backend rewrite in `backend/vercel.json`, requests do not reach `app/main.py` consistently on Vercel.
-- Without the SQLite-specific engine option, the lightweight serverless database path is fragile.
-- Without the wildcard CORS branch, a temporary bootstrap deployment cannot call the API safely.
-- Without the auth upload page fix, the frontend production build fails during prerender.
-- Without API base URL normalization, production env setup is easy to misconfigure by pasting a backend URL that ends in `/api` even though the deployed backend serves root routes.
-- Without the Neon Auth frontend envs, the auth handler cannot initialize correctly even if the backend deploy is healthy.
-- Without trusted Neon Auth origins, the auth route rejects sign-in and sign-up before application logic runs.
-- Without an explicit favicon route, browsers fall back to `/favicon.ico` and log a visible 404 even though the project already has `icon.svg`.
+## What to watch
 
-### Current deployment state
+**High priority:**
 
-- the frontend production deployment is building successfully on Vercel
-- the backend production deployment is marked `READY` on Vercel
-- the frontend project is correctly configured with `Root Directory = frontend`
-- the backend project is currently configured with `Root Directory = .` and needs to be changed to `backend` before the next redeploy
+- `Base.metadata.create_all()` is still used on startup — replace with Alembic migrations before any production data is at risk
+- The Celery worker is not deployed on Vercel — async job tracking only works if a separate worker process is running. The sync path (`POST /playlist/fetch?sync=true`) still works without it
+- `ytmusicapi` is unofficial and can break on YouTube Music API changes — the retry layer helps but real telemetry around failure rates should be added
 
-## Backend Review
+**Medium priority:**
 
-### What is solid
+- No end-to-end tests yet — the property tests cover logic but not the full HTTP request/response cycle
+- Feedback boosts in the blend engine use hardcoded deltas (+10 like, -10 dislike, -5 skip) — these should be tunable via config
+- The `GET /blends/mine` route still accepts a `user_id` query param alongside `current_user` — the param is now validated to match the authenticated user, but the route signature could be simplified to just use `current_user.id`
+- Auth file encryption uses a key derived from `SECRET_KEY` via SHA-256 — rotating `SECRET_KEY` invalidates all stored encrypted auth files with no migration path
 
-- The API surface matches the requested product spec.
-- The blend engine is isolated in its own service and easy to test independently.
-- Auth file handling is separated from the main blend flow and encrypted before persistence.
-- The YT Music integration is wrapped behind a dedicated service, which keeps controller code small and makes future mocking easier.
-- The service layer keeps routes relatively thin and readable.
+**Low priority:**
 
-### What to watch
+- The `New Discoveries` section uses `get_watch_playlist` (YouTube Music radio) — this is best-effort and may return empty results for some tracks
+- Fuzzy matching thresholds (85 for same-artist, 90 for different-artist) are hardcoded — may need tuning against real user libraries
+- The frontend blend feedback widget is always visible after page load — the spec says it should appear after first scroll, after export, or after viewing. The current implementation shows it immediately
 
-- `Base.metadata.create_all()` is useful for scaffolding but should be replaced with migrations before real deployment.
-- `ytmusicapi` is unofficial and brittle, so the retry layer is necessary but not sufficient. Real telemetry around failures should be added next.
-- Access control is not implemented yet. Right now the API shape assumes a private deployment or a trusted environment.
-- Playlist and liked songs fetches are stored as JSON snapshots, which is good for speed early on, but a richer normalized track table may be better later for analytics and repeated blends.
+## Security posture
 
-## Frontend Review
+**In place:**
+- Session token validation on all protected routes
+- Ownership checks on blend/playlist-source routes
+- Auth file encryption (Fernet/AES-128-CBC)
+- File size validation (1 MB cap)
+- CORS restricted to `FRONTEND_URL` in production
+- Rate limiting (60/user/min, 100/IP/min)
 
-### What is solid
+**Still missing:**
+- Audit logging for export actions
+- Secret rotation strategy for `SECRET_KEY` (requires re-encrypting all stored auth files)
+- Content validation on auth file upload beyond JSON parsing and size check
+- CSRF protection (currently relies on CORS + SameSite cookies)
 
-- The UI follows the requested simple flow: home, create blend, result, and auth upload.
-- Zustand is used only for session-level UI state, which keeps the store small.
-- The create page supports both lightweight users and advanced users in one flow.
-- The result page exposes export controls without hiding the backend dependency on auth uploads.
+## Test coverage
 
-### What to watch
+| Area | Coverage |
+|---|---|
+| Blend engine unit tests | ✅ `test_blend_engine.py` |
+| Normalization idempotence (Property 1) | ✅ |
+| Deduplication stability (Property 2) | ✅ |
+| Compatibility score bounds (Property 3) | ✅ |
+| Section size limits (Property 4) | ✅ |
+| Intersection correctness (Property 5) | ✅ |
+| Playlist link count enforcement (Property 6) | ✅ |
+| Feedback toggle round-trip (Property 7) | ✅ |
+| Job status progression (Property 8) | ✅ |
+| Auth encryption round-trip (Property 9) | ✅ |
+| Ownership isolation (Property 10) | ✅ |
+| Rate limit enforcement (Property 11) | ✅ |
+| Track feedback storage (Property 12) | ✅ |
+| Blend feedback storage (Property 13) | ✅ |
+| FastAPI endpoint tests | ❌ missing |
+| YTMusicService mock tests | ❌ missing |
+| Frontend interaction tests | ❌ missing |
 
-- The frontend assumes the backend is reachable at `NEXT_PUBLIC_API_BASE_URL`; failures are surfaced as messages but there is no retry UI yet.
-- The frontend auth path assumes `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` are configured; those values are now documented but still need to be added in Vercel.
-- The frontend auth pages now catch rejected Neon Auth promises and show a more actionable message for `Invalid origin`, but the real fix still lives in Neon Auth trusted-origin configuration.
-- There is no optimistic progress state for long-running async Celery jobs yet. The current UI uses the synchronous path for simplicity.
-- There is no authentication or share-link protection on result pages yet.
+## Recommended next steps
 
-## Blend Logic Review
-
-### Current behavior
-
-- Shared tracks are based on normalized exact-key overlap.
-- Side recommendations are scored by overlap ratio, artist similarity, and diversity.
-- Duplicate cleanup uses fuzzy title and artist matching.
-
-### Tradeoffs
-
-- This is a good first version for an MVP because it is understandable and debuggable.
-- It may still pick alternate song versions if YouTube metadata is noisy.
-- Artist-based affinity is intentionally simple and should be tuned against real usage data.
-
-## Security Review
-
-### Current protections
-
-- auth headers are encrypted before storage
-- raw headers are not logged in controller code
-- export requires a stored auth payload
-- liked songs import fails cleanly when auth is missing
-
-### Missing pieces
-
-- user/session ownership enforcement
-- auth upload size limits and content validation hardening
-- secret rotation strategy
-- rate limiting
-- audit logging for export actions
-
-## Test Review
-
-### Present coverage
-
-- there is a backend unit test file for the blend engine
-
-### Missing coverage
-
-- FastAPI endpoint tests
-- YT Music wrapper tests with mocks
-- frontend interaction tests
-- full integration tests around create -> fetch -> generate -> export
-
-## Recommended Next Steps
-
-1. Install runtime toolchains and run the project locally.
-2. Add migrations and a seed script.
-3. Add API tests around the critical endpoints.
-4. Move long-running fetches and export into the async UI path.
-5. Add authentication and ownership checks before any public deployment.
+1. Add Alembic migrations — `create_all` is not safe for production schema changes
+2. Deploy a Celery worker alongside the backend for async job processing
+3. Add FastAPI endpoint tests using `httpx.AsyncClient` and a test database
+4. Add telemetry around `ytmusicapi` failure rates and export accuracy
+5. Tune feedback boost deltas and fuzzy matching thresholds against real usage data
+6. Implement the blend feedback widget trigger logic (show after scroll/export/view)

@@ -4,10 +4,46 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 
+const YTM_URL_PATTERN = /^(https:\/\/music\.youtube\.com\/(playlist\?list=|watch\?.*list=)[A-Za-z0-9_\-]+|[A-Za-z0-9_\-]{10,})$/;
+
+function validateYTMUrl(url: string): string | null {
+  if (!url.trim()) return null; // empty is ok
+  if (!YTM_URL_PATTERN.test(url.trim())) {
+    return "Must be a YouTube Music playlist URL (music.youtube.com/playlist?list=...)";
+  }
+  return null;
+}
+
 import { createBlend, fetchPlaylistSources, generateBlend, uploadAuth } from "@/lib/api";
 import { useSession } from "@/lib/auth/client";
 import { useBlendStore } from "@/store/blend-store";
 import { SectionCard } from "@/components/ui/section-card";
+
+async function pollJobStatus(jobId: string, onProgress?: (progress: number) => void): Promise<void> {
+  const MAX_WAIT_MS = 10 * 60 * 1000; // 10 minutes
+  const start = Date.now();
+  let delay = 1000;
+  const MAX_DELAY = 10000;
+
+  while (Date.now() - start < MAX_WAIT_MS) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/job/${jobId}`, {
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) break;
+
+    const job = await response.json();
+    onProgress?.(job.progress ?? 0);
+
+    if (job.status === "done") return;
+    if (job.status === "failed") throw new Error(job.errorMessage ?? "Job failed");
+
+    delay = Math.min(delay * 2, MAX_DELAY);
+  }
+}
 
 type ParticipantKey = "userA" | "userB";
 
@@ -30,6 +66,10 @@ export function BlendForm() {
     userB: null,
   });
   const [statusLine, setStatusLine] = useState<string | null>(null);
+  const [linkErrors, setLinkErrors] = useState<Record<ParticipantKey, string[]>>({
+    userA: [],
+    userB: [],
+  });
   const {
     draft,
     error,
@@ -45,6 +85,10 @@ export function BlendForm() {
   } = useBlendStore();
 
   const canSubmit = useMemo(() => {
+    const hasLinkErrors = (["userA", "userB"] as ParticipantKey[]).some((key) =>
+      linkErrors[key].some((e) => e !== ""),
+    );
+    if (hasLinkErrors) return false;
     return (["userA", "userB"] as ParticipantKey[]).every((key) => {
       const participant = draft[key];
       const hasName = participant.name.trim().length > 0;
@@ -52,7 +96,7 @@ export function BlendForm() {
       const hasLikedSongs = participant.includeLikedSongs;
       return hasName && (hasPlaylist || hasLikedSongs);
     });
-  }, [draft]);
+  }, [draft, linkErrors]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,20 +182,41 @@ export function BlendForm() {
                   </div>
 
                   {participant.playlistLinks.map((link, index) => (
-                    <div key={`${key}-${index}`} className="flex gap-2 animate-fade-in-up">
-                      <input
-                        value={link}
-                        onChange={(event) => setPlaylistLink(key, index, event.target.value)}
-                        placeholder="https://music.youtube.com/playlist?list=..."
-                        className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white placeholder-text-muted outline-none transition-all duration-300 focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePlaylistLink(key, index)}
-                        className="rounded-xl border border-white/10 bg-surface-elevated px-4 py-3 text-sm font-semibold text-text-muted transition-colors hover:border-brand-ytgradient2 hover:text-brand-ytgradient2 hover:bg-brand-ytgradient2/10"
-                      >
-                        ✕
-                      </button>
+                    <div key={`${key}-${index}`} className="flex flex-col gap-1 animate-fade-in-up">
+                      <div className="flex gap-2">
+                        <input
+                          value={link}
+                          onChange={(event) => {
+                            const newValue = event.target.value;
+                            setPlaylistLink(key, index, newValue);
+                            const error = validateYTMUrl(newValue) ?? "";
+                            setLinkErrors((current) => {
+                              const updated = [...(current[key] ?? [])];
+                              updated[index] = error;
+                              return { ...current, [key]: updated };
+                            });
+                          }}
+                          placeholder="https://music.youtube.com/playlist?list=..."
+                          className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white placeholder-text-muted outline-none transition-all duration-300 focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            removePlaylistLink(key, index);
+                            setLinkErrors((current) => {
+                              const updated = [...(current[key] ?? [])];
+                              updated.splice(index, 1);
+                              return { ...current, [key]: updated };
+                            });
+                          }}
+                          className="rounded-xl border border-white/10 bg-surface-elevated px-4 py-3 text-sm font-semibold text-text-muted transition-colors hover:border-brand-ytgradient2 hover:text-brand-ytgradient2 hover:bg-brand-ytgradient2/10"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {linkErrors[key][index] && (
+                        <p className="text-xs text-brand-ytred mt-1">{linkErrors[key][index]}</p>
+                      )}
                     </div>
                   ))}
                 </div>

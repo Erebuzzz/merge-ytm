@@ -1,57 +1,92 @@
 # Contributing
 
-Thank you for contributing to YTMusic Sync.
+Thanks for contributing to Merge. This is a full-stack project mixing a Next.js frontend and a FastAPI backend — changes often touch both sides. Keep contributions small, focused, and well-documented.
 
-This repository mixes a Next.js frontend and a FastAPI backend, so changes tend to affect both runtime behavior and deployment shape. Keep changes small, reviewable, and documented.
+## Before you start
 
-## Before You Start
+- Read [README.md](./README.md) for product context, architecture, and local setup.
+- Read [DEPLOYMENT.md](./DEPLOYMENT.md) if your change touches routing, env variables, or Vercel config.
+- Read [code_review.md](./code_review.md) for the current technical risk picture before making structural changes.
+- Read [SECURITY.md](./SECURITY.md) if your change touches auth, encryption, or user data.
 
-- Read [README.md](./README.md) for product context and architecture.
-- Read [DEPLOYMENT.md](./DEPLOYMENT.md) if your change touches routing, environment variables, or Vercel behavior.
-- Read [code_review.md](./code_review.md) if you need the current technical risk picture before making a structural change.
+## Local setup
 
-## Local Setup
+```bash
+# 1. Copy env files
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Copy `frontend/.env.example` to `frontend/.env.local`.
-3. Start Postgres and Redis with `docker compose up -d`, or point the env values at your own services.
-4. Start the backend from `backend/`.
-5. Start the frontend from `frontend/`.
+# 2. Start infrastructure
+docker compose up -d
 
-## Working Style
+# 3. Backend
+cd backend
+pip install -e ".[dev]"
+uvicorn app.main:app --reload
 
-- Keep API paths consistent with the backend root-path routing defined in `backend/vercel.json`.
+# 4. Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+## Working style
+
+- Keep API paths consistent with the root-path routing in `backend/vercel.json`.
 - Prefer targeted fixes over broad rewrites unless the change has been discussed first.
-- Update docs whenever the contributor workflow, deployment flow, or public API shape changes.
-- Update `code_review.md` when you materially change architecture, behavior, deployment assumptions, or known risks.
+- Update docs when the contributor workflow, deployment flow, or public API shape changes.
+- Update `code_review.md` when you materially change architecture, behavior, or known risks.
 - Do not commit secrets, auth headers, or real user data.
 
-## Code Quality Expectations
+## Code quality
 
-- Frontend changes should build successfully with `npm run build` from `frontend/`.
-- Backend changes should be covered by tests when practical, especially for the blend engine or API behavior.
-- If you cannot run a required verification step, say so clearly in the pull request.
-- Keep naming direct and boring. Favor clarity over clever abstractions.
+**Backend:**
 
-## Commit Guidance
+- New service logic should have tests in `backend/tests/`.
+- Property-based tests use Hypothesis — add them for correctness properties in `test_properties.py`.
+- Run the test suite before opening a PR: `cd backend && pytest tests/ -v`
+- The blend engine, normalization service, and feedback service are the most test-sensitive areas.
+
+**Frontend:**
+
+- Changes should build successfully: `cd frontend && npm run build`
+- Keep Zustand store additions minimal — only add state that is genuinely shared across components.
+- Client-side URL validation and form error handling should match backend validation rules.
+
+## Commit guidance
 
 - Use small, intentional commits.
 - Write commit messages that describe the user-facing or deploy-facing effect.
-- If your change modifies deployment assumptions, mention the affected project or environment variable in the commit body.
+- If your change modifies deployment assumptions, mention the affected project or env variable in the commit body.
 
-## Pull Request Checklist
+## Pull request checklist
 
-- The change is scoped to a single clear purpose.
-- README or supporting docs were updated if behavior changed.
-- `code_review.md` still matches the current repo state.
-- New env variables, routes, or deployment requirements are documented.
-- No secrets or local machine artifacts are included.
+- [ ] Change is scoped to a single clear purpose
+- [ ] README or supporting docs updated if behavior changed
+- [ ] `code_review.md` still reflects the current repo state
+- [ ] New env variables, routes, or deployment requirements are documented
+- [ ] Backend tests pass (`pytest tests/ -v`)
+- [ ] Frontend builds (`npm run build`)
+- [ ] No secrets or local artifacts included
 
-## Communication
+## Deployment-affecting changes
 
-If a change affects deployment, note all of the following in the PR description:
+If your PR affects deployment, include in the description:
 
-- which Vercel project is affected
-- whether the root directory changes
-- which environment variables were added, removed, or renamed
-- what smoke check proves the deploy is healthy
+- Which Vercel project is affected (`merge-frontend` or `merge-backend`)
+- Whether the root directory or build settings change
+- Which env variables were added, removed, or renamed
+- What smoke check confirms the deploy is healthy
+
+## New API routes
+
+When adding a route:
+
+1. Add the `get_current_user` dependency (all protected routes require auth)
+2. Add ownership checks if the route accesses blend or playlist-source data
+3. Add the route to the API surface table in `README.md`
+4. Add Pydantic request/response schemas in `backend/app/schemas/api.py`
+
+## Database changes
+
+The app currently uses `Base.metadata.create_all()` on startup. Until Alembic migrations are added, new models just need to be imported in `models.py` and they will be created automatically. Document any new tables in the schema diagram in `design.md`.

@@ -99,3 +99,33 @@ export async function createYTMusicPlaylist(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export async function submitTrackFeedback(payload: {
+  blendId: string;
+  trackId: string;
+  action: "like" | "dislike" | "skip";
+}): Promise<{ status: string }> {
+  return request<{ status: string }>("/feedback/track", {
+    method: "POST",
+    body: JSON.stringify({
+      blend_id: payload.blendId,
+      track_id: payload.trackId,
+      action: payload.action,
+    }),
+  });
+}
+
+export async function submitBlendFeedback(payload: {
+  blendId: string;
+  rating: number | null;
+  quickOption: "accurate" | "missed_vibe" | null;
+}): Promise<{ status: string }> {
+  return request<{ status: string }>("/feedback/blend", {
+    method: "POST",
+    body: JSON.stringify({
+      blend_id: payload.blendId,
+      rating: payload.rating,
+      quick_option: payload.quickOption,
+    }),
+  });
+}

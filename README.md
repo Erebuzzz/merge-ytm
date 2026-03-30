@@ -1,186 +1,190 @@
-# YTMusic Sync
+# Merge
 
-YTMusic Sync is a private full-stack web app for generating a shared "blend" playlist from YouTube Music data.
+Merge generates shared playlists from the combined YouTube Music taste of two listeners. It finds what you both love, surfaces compatible picks from each side, and adds algorithmic discoveries neither of you knew yet.
 
-It is designed around a narrow workflow:
+Free, open-source, and community-driven.
 
-- each listener pastes up to 5 playlist links
-- advanced users can optionally attach `headers_auth.json`
-- the backend fetches tracks with `ytmusicapi`
-- tracks are normalized, deduplicated, and fuzzy matched
-- a three-part blend is generated
-- one listener can push the final playlist back to YouTube Music
+## What it does
 
-## Product Intent
-
-The app is aimed at non-technical users who want a low-friction way to compare taste and build a shared private playlist without manually cleaning track lists.
+- Each listener pastes up to 5 YouTube Music playlist links
+- Advanced users can attach `headers_auth.json` to include liked songs and enable export
+- The backend fetches tracks via `ytmusicapi`, normalizes and deduplicates them, then scores the blend
+- The result is a three-section playlist: shared taste, picks from each listener, and new discoveries
+- One listener can push the final playlist directly to their YouTube Music library
 
 ## Stack
 
-- Frontend: Next.js + TailwindCSS + Zustand
-- Backend: FastAPI + SQLAlchemy
-- Database: PostgreSQL
-- Async jobs: Celery + Redis
-- Music integration: `ytmusicapi`
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 15, TailwindCSS, Zustand |
+| Backend | FastAPI, SQLAlchemy |
+| Database | PostgreSQL (Neon) |
+| Async jobs | Celery + Redis |
+| Auth | Neon Auth (Better Auth) |
+| Music | `ytmusicapi` |
 
-## Documentation Map
+## Documentation
 
-- [README.md](./README.md): product overview, architecture, local setup, and quick deployment notes
-- [DEPLOYMENT.md](./DEPLOYMENT.md): step-by-step Vercel deployment guide with environment variables and smoke checks
-- [CONTRIBUTING.md](./CONTRIBUTING.md): contribution workflow, quality bar, and pull request checklist
-- [SECURITY.md](./SECURITY.md): secrets handling, auth upload expectations, and vulnerability reporting
-- [code_review.md](./code_review.md): collaborator-focused technical review and current risk areas
+- [README.md](./README.md) — product overview, architecture, local setup
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — Vercel deployment guide, env vars, smoke checks
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — contribution workflow and PR checklist
+- [SECURITY.md](./SECURITY.md) — secrets handling and vulnerability reporting
+- [code_review.md](./code_review.md) — technical review and known risk areas
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A["Next.js frontend"] -->|"POST /blend/create"| B["FastAPI API"]
-    A -->|"POST /user/upload-auth"| B
-    A -->|"POST /playlist/fetch"| B
-    A -->|"POST /blend/generate"| B
-    A -->|"POST /ytmusic/create-playlist"| B
-
-    B -->|"store users, sources, blends"| C["PostgreSQL"]
-    B -->|"queue long-running jobs"| D["Celery worker"]
-    D -->|"broker / results"| E["Redis"]
-    D -->|"read / write blend state"| C
-    B -->|"direct fetch path for simple UX"| F["ytmusicapi service"]
-    D -->|"background fetch / export"| F
-    F -->|"playlist, liked songs, create playlist"| G["YouTube Music"]
+    A["Next.js frontend"] -->|"REST API"| B["FastAPI backend"]
+    B -->|"users, blends, feedback"| C["PostgreSQL"]
+    B -->|"queue jobs"| D["Celery worker"]
+    D -->|"broker"| E["Redis"]
+    D -->|"read/write blend state"| C
+    B -->|"rate limiting"| E
+    B -->|"fetch / export"| F["ytmusicapi"]
+    F -->|"YouTube Music"| G["YTM API"]
 ```
 
-## Main Flow
+## Request flow
 
-1. The frontend collects two listeners and their sources.
-2. `POST /blend/create` creates users, playlist sources, and an empty blend record.
-3. Optional auth files are uploaded and encrypted before storage.
-4. `POST /playlist/fetch` fetches playlist tracks and liked songs.
-5. The backend normalizes titles and artists, strips noisy suffixes, deduplicates tracks, and uses fuzzy matching for near duplicates.
-6. `POST /blend/generate` computes:
-   - shared tracks
-   - user A recommendations
-   - user B recommendations
-   - compatibility score
-7. `POST /ytmusic/create-playlist` creates a private playlist and pushes validated track ids.
+1. `RateLimiter` middleware checks per-user (60 req/min) and per-IP (100 req/min) counters in Redis.
+2. `AuthMiddleware` validates the session token against `neon_auth.session`.
+3. Route handler delegates to `BlendService`, which orchestrates `YTMusicService`, `NormalizationService`, `BlendEngine`, and `FeedbackService`.
+4. Long-running operations (fetch, generate, export) are dispatched to Celery. A `Job` record is created and its `job_id` returned immediately.
+5. The client polls `GET /job/{job_id}` with exponential backoff until `done` or `failed`.
 
-## Blend Engine
+## Blend engine
 
-The blend engine currently follows the spec closely:
+### Sections
 
-- Shared Taste: exact intersection on normalized track keys
-- From User A: unique tracks from listener A ranked for fit
-- From User B: unique tracks from listener B ranked for fit
+| Section | Description |
+|---|---|
+| Shared Taste | Exact intersection on normalized track keys |
+| From User A | Unique tracks from listener A, ranked by compatibility |
+| From User B | Unique tracks from listener B, ranked by compatibility |
+| New Discoveries | Algorithmic radio picks seeded from shared tracks |
 
-### Normalization Rules
+Limits: 50 tracks total, 20 per section.
 
-- lowercase title and artist
-- strip noisy bracket content like `official video`, `audio`, `lyrics`, `remastered`
-- trim whitespace
-- generate a stable `normalizedKey`
-- fuzzy compare title and artist pairs using `rapidfuzz`
+### Normalization
 
-### Recommendation Scoring
+- NFKD unicode normalization + lowercase
+- Strip bracket noise: `official video`, `audio`, `lyrics`, `remastered`, etc.
+- Normalize featuring credits and special symbols
+- Trim whitespace
+- Fuzzy match title + artist pairs with `rapidfuzz`
 
-Each unique track is scored using:
+### Scoring formula
 
-```text
-score = (0.5 * overlap_ratio) +
-        (0.3 * artist_similarity) +
-        (0.2 * diversity_factor)
+```
+score = (0.5 × overlap_ratio)
+      + (0.3 × artist_similarity)
+      + (0.2 × diversity_factor)
+      + frequency_weight
 ```
 
-This keeps the blend from collapsing into either:
+Feedback boosts are applied on top: liked tracks get `+10`, disliked `−10`, skipped `−5`.
 
-- only pure overlap tracks
-- or a random pile of unrelated unique songs
+### Compatibility score
 
-## API Surface
+```
+compatibility = 2 × |shared| / (|A| + |B|) × 100
+```
 
-### Required endpoints
+## API surface
 
-- `GET /`
-- `GET /health`
-- `POST /blend/create`
-- `POST /user/upload-auth`
-- `POST /playlist/fetch`
-- `GET /blend/{id}`
-- `POST /blend/generate`
-- `POST /ytmusic/create-playlist`
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Health / status |
+| `GET` | `/health` | Smoke check |
+| `POST` | `/blend/create` | Create blend record |
+| `POST` | `/user/upload-auth` | Upload + encrypt auth headers |
+| `POST` | `/playlist/fetch` | Fetch playlist tracks |
+| `GET` | `/blend/{id}` | Get blend detail |
+| `POST` | `/blend/generate` | Generate blend sections |
+| `POST` | `/blend/generate/async` | Dispatch async generation |
+| `POST` | `/ytmusic/create-playlist` | Export to YouTube Music |
+| `GET` | `/job/{job_id}` | Poll async job status |
+| `POST` | `/feedback/track` | Submit track feedback |
+| `POST` | `/feedback/blend` | Submit blend rating |
 
-### Practical shape
+All routes except `GET /` and `GET /health` require authentication.
 
-- `/` returns a simple backend-ready status payload
-- `/health` returns the smoke-test health check
-- `/blend/create` persists listeners and source references
-- `/user/upload-auth` accepts multipart JSON upload and encrypts it
-- `/playlist/fetch` can run synchronously for the simple UI path or asynchronously through Celery
-- `/blend/generate` materializes final sections into the `blends` table
-- `/ytmusic/create-playlist` validates video ids before export
+## Repository layout
 
-## Repository Layout
-
-```text
+```
 .
-|-- backend/
-|   |-- app/
-|   |   |-- api/
-|   |   |-- core/
-|   |   |-- db/
-|   |   |-- schemas/
-|   |   |-- services/
-|   |   |-- main.py
-|   |   |-- models.py
-|   |   `-- tasks.py
-|   |-- tests/
-|   |-- .env.example
-|   |-- pyproject.toml
-|   `-- vercel.json
-|-- frontend/
-|   |-- src/
-|   |   |-- app/
-|   |   |-- components/
-|   |   |-- lib/
-|   |   |-- store/
-|   |   `-- types/
-|   |-- .env.example
-|   |-- package.json
-|   `-- tailwind.config.ts
-|-- CONTRIBUTING.md
-|-- DEPLOYMENT.md
-|-- LICENSE
-|-- SECURITY.md
-|-- code_review.md
-`-- README.md
+├── backend/
+│   ├── app/
+│   │   ├── api/routes.py
+│   │   ├── core/
+│   │   │   ├── auth_middleware.py
+│   │   │   ├── celery_app.py
+│   │   │   ├── config.py
+│   │   │   ├── rate_limiter.py
+│   │   │   └── security.py
+│   │   ├── db/session.py
+│   │   ├── schemas/api.py
+│   │   ├── services/
+│   │   │   ├── blend_engine.py
+│   │   │   ├── blend_service.py
+│   │   │   ├── feedback_service.py
+│   │   │   ├── normalization.py
+│   │   │   └── ytmusic_client.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   └── tasks.py
+│   ├── tests/
+│   │   ├── test_blend_engine.py
+│   │   └── test_properties.py
+│   ├── .env.example
+│   ├── pyproject.toml
+│   └── vercel.json
+├── frontend/
+│   └── src/
+│       ├── app/
+│       ├── components/
+│       ├── lib/
+│       ├── store/
+│       └── types/
+├── CONTRIBUTING.md
+├── DEPLOYMENT.md
+├── LICENSE
+├── SECURITY.md
+├── code_review.md
+└── README.md
 ```
 
-## Local Development
+## Local development
 
 ### Prerequisites
 
 - Node.js 20+
 - Python 3.11+
-- Docker Desktop or local PostgreSQL + Redis
+- Docker Desktop (or local PostgreSQL + Redis)
 
-### Environment
+### Environment setup
 
-Copy `backend/.env.example` to `backend/.env` and `frontend/.env.example` to `frontend/.env.local`.
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
 
-The root [`./.env.example`](./.env.example) is only a quick reference. The app-specific files above are the files that should actually be copied.
+Required values:
 
-Set the main values first:
+| Variable | Where |
+|---|---|
+| `DATABASE_URL` | backend |
+| `REDIS_URL` | backend |
+| `SECRET_KEY` | backend |
+| `FRONTEND_URL` | backend |
+| `NEXT_PUBLIC_API_BASE_URL` | frontend |
+| `NEON_AUTH_BASE_URL` | frontend |
+| `NEON_AUTH_COOKIE_SECRET` | frontend |
 
-- `DATABASE_URL`
-- `REDIS_URL`
-- `SECRET_KEY`
-- `FRONTEND_URL`
-- `NEXT_PUBLIC_API_BASE_URL`
-- `NEON_AUTH_BASE_URL`
-- `NEON_AUTH_COOKIE_SECRET`
+The frontend strips a trailing `/api` from `NEXT_PUBLIC_API_BASE_URL` automatically.
 
-The frontend value should point at the backend root domain. If you accidentally include a trailing `/api`, the frontend strips it before making requests.
-The Neon Auth values are used by the frontend auth handler and are separate from the backend `SECRET_KEY`.
-Neon Auth also requires each frontend origin to be trusted. For local development and manual Vercel setups, add `http://localhost:3000`, your production frontend URL, and any active preview URL to Neon Auth trusted origins.
+Neon Auth requires each frontend origin to be trusted. Add `http://localhost:3000`, your production URL, and any active preview URLs to Neon Auth trusted origins.
 
 ### Start infrastructure
 
@@ -196,7 +200,7 @@ pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
-### Start worker
+### Start Celery worker
 
 ```bash
 cd backend
@@ -211,82 +215,28 @@ npm install
 npm run dev
 ```
 
-## Security Notes
+### Run backend tests
 
-- uploaded auth headers are encrypted before storage
-- raw auth payloads should never be logged
-- liked songs import is only enabled when auth exists
-- playlist export requires a valid auth file for one listener
-- the app is intended to run behind HTTPS in deployment
+```bash
+cd backend
+pytest tests/ -v
+```
 
-## Known Gaps
+## Security notes
 
-This repository is scaffolded end to end, but some production follow-up work is still expected:
+- Auth headers are encrypted with Fernet (AES-128-CBC) before storage — plaintext is never persisted
+- File size is validated before processing (max 1 MB)
+- All API routes require a valid session token
+- CORS is restricted to `FRONTEND_URL` in production
+- Per-user and per-IP rate limiting via Redis
+- Ownership checks prevent cross-user blend access
 
-- add Alembic migrations instead of `create_all`
-- add auth or session ownership around blend access
-- add richer retry policies and job progress tracking
-- add end-to-end tests once runtime tooling is installed
-- tune fuzzy matching and export validation against real user libraries
-
-## Vercel Deployment
-
-Deploy the frontend and backend as two separate Vercel projects.
-
-For the full deployment checklist, see [DEPLOYMENT.md](./DEPLOYMENT.md).
-
-### Frontend project
-
-- Root Directory: `frontend`
-- Framework Preset: `Next.js`
-- Required Environment Variables:
-  - `NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain.vercel.app`
-  - `NEON_AUTH_BASE_URL=https://your-neon-auth-base-url`
-  - `NEON_AUTH_COOKIE_SECRET=replace-with-a-long-random-secret`
-- Neon Auth trusted origins:
-  - `http://localhost:3000` for local development
-  - `https://your-frontend-domain.vercel.app` for production
-  - each active preview deployment URL if you are not using the Neon and Vercel auth integration
-
-If sign-in or sign-up returns `403` with `Invalid origin`, the current frontend URL is not in Neon Auth trusted origins yet.
-
-### Backend project
-
-- Root Directory: `backend`
-- Framework Preset: `Other`
-- Request routing: `backend/vercel.json` rewrites all requests to `app/main.py`
-- Required Environment Variables:
-  - `DATABASE_URL`
-  - `REDIS_URL`
-  - `SECRET_KEY`
-  - `FRONTEND_URL=https://your-frontend-domain.vercel.app`
-  - `DEBUG=false`
-- Optional tuning variables:
-  - `MAX_PLAYLIST_LINKS`
-  - `LIKED_SONGS_LIMIT`
-  - `TOTAL_TRACKS_LIMIT`
-  - `MAX_TRACKS_PER_SECTION`
-  - `YTMUSIC_RETRY_ATTEMPTS`
-
-### Smoke checks after deploy
-
-- Frontend should load without a `/favicon.ico` 404.
-- Backend root `/` should return basic service metadata.
-- Backend `/health` should return `{"status":"ok"}`.
-
-## Notes For Collaborators
-
-- `code_review.md` explains the structure and current technical risks
-- the current codebase was scaffolded in a workspace where `node`, `npm`, and `python` were not exposed in shell, so installs and runtime verification still need to be done on a machine with those toolchains available
+See [SECURITY.md](./SECURITY.md) for full details.
 
 ## Contributing
 
-Contribution workflow, quality expectations, and commit guidance live in [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## Security
-
-Secrets handling and responsible disclosure notes live in [SECURITY.md](./SECURITY.md).
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
-This repository is licensed under the MIT License. See [LICENSE](./LICENSE).
+MIT — see [LICENSE](./LICENSE).

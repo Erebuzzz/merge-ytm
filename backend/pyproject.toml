@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ytmusic-sync-backend"
+name = "merge-backend"
 version = "0.1.0"
-description = "FastAPI backend for YTMusic Sync"
+description = "FastAPI backend for Merge"
 requires-python = ">=3.11"
 dependencies = [
   "celery>=5.4,<6.0",
