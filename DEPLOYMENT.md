@@ -57,6 +57,8 @@ FRONTEND_URL=https://your-frontend-domain.vercel.app
 DEBUG=false
 ```
 
+`FRONTEND_URL` may be a single origin or a comma-separated list of origins. This is useful when you need both production and preview frontend domains to pass backend CORS checks.
+
 Optional tuning variables:
 
 ```text
