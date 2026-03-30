@@ -31,6 +31,7 @@ Instead:
 
 - Keep Preview and Production environment variables separate when possible.
 - Verify `FRONTEND_URL` matches the deployed frontend domain.
+- Verify Neon Auth trusted origins include the exact frontend origin in use, including local and preview domains when applicable.
 - Remove unused preview deployments if they were configured with sensitive values during debugging.
 
 ## Scope Notes

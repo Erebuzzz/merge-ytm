@@ -37,6 +37,14 @@ NEON_AUTH_COOKIE_SECRET=replace-with-a-long-random-secret
 The frontend expects the backend root domain. If you accidentally include `/api`, the app strips that suffix before sending requests.
 The Neon Auth cookie secret is separate from the backend `SECRET_KEY`.
 
+You also need to trust the frontend origins in Neon Auth:
+
+- `http://localhost:3000` for local development
+- your production frontend domain
+- each active preview deployment domain if you manage Neon Auth manually
+
+If you connected Neon Auth through the Neon and Vercel integration with auth enabled, Neon can inject `NEON_AUTH_BASE_URL` and add trusted production and preview domains automatically. Manual setups still need these origins added explicitly.
+
 ### Backend
 
 Add these required variables to Preview and Production:
@@ -104,6 +112,21 @@ Usually caused by one of these:
 - `NEON_AUTH_BASE_URL` or `NEON_AUTH_COOKIE_SECRET` is missing
 - `FRONTEND_URL` on the backend does not match the frontend domain
 - database or redis credentials are invalid
+
+### Auth endpoints return `403` with `Invalid origin`
+
+Usually caused by one of these:
+
+- the current frontend URL is missing from Neon Auth trusted origins
+- `NEON_AUTH_BASE_URL` points at a different Neon Auth environment than the one you configured
+- you are testing from a Vercel preview URL that was never added to trusted origins
+
+Recommended checks:
+
+1. Open the deployed frontend URL you are actually using.
+2. Add that exact origin to Neon Auth trusted origins.
+3. Keep `http://localhost:3000` trusted for local development.
+4. If you rely on preview deployments, trust each preview origin or switch to the Neon and Vercel auth integration so previews are wired automatically.
 
 ### Browser logs `/favicon.ico` 404
 

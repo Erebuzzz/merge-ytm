@@ -180,6 +180,7 @@ Set the main values first:
 
 The frontend value should point at the backend root domain. If you accidentally include a trailing `/api`, the frontend strips it before making requests.
 The Neon Auth values are used by the frontend auth handler and are separate from the backend `SECRET_KEY`.
+Neon Auth also requires each frontend origin to be trusted. For local development and manual Vercel setups, add `http://localhost:3000`, your production frontend URL, and any active preview URL to Neon Auth trusted origins.
 
 ### Start infrastructure
 
@@ -242,6 +243,12 @@ For the full deployment checklist, see [DEPLOYMENT.md](./DEPLOYMENT.md).
   - `NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain.vercel.app`
   - `NEON_AUTH_BASE_URL=https://your-neon-auth-base-url`
   - `NEON_AUTH_COOKIE_SECRET=replace-with-a-long-random-secret`
+- Neon Auth trusted origins:
+  - `http://localhost:3000` for local development
+  - `https://your-frontend-domain.vercel.app` for production
+  - each active preview deployment URL if you are not using the Neon and Vercel auth integration
+
+If sign-in or sign-up returns `403` with `Invalid origin`, the current frontend URL is not in Neon Auth trusted origins yet.
 
 ### Backend project
 
