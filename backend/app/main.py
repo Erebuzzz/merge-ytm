@@ -12,9 +12,12 @@ settings = get_settings()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, debug=settings.debug)
 
-def _parse_frontend_origins(value: str) -> list[str]:
+def _parse_frontend_origins(value: str | None) -> list[str]:
+    if not value:
+        return ["*"]
     origins = [origin.strip().rstrip("/") for origin in value.split(",")]
-    return [origin for origin in origins if origin]
+    parsed = [origin for origin in origins if origin]
+    return parsed or ["*"]
 
 
 # CORS: allow the configured frontend origin(s) and localhost during development.
