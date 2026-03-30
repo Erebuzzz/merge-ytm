@@ -12,18 +12,26 @@ settings = get_settings()
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, debug=settings.debug)
 
-# CORS: allow the configured frontend and localhost during development.
-allowed_origins: list[str] = ["*"]
-if settings.frontend_url and settings.frontend_url != "*":
-    allowed_origins = [
-        settings.frontend_url,
-        "http://localhost:3000",
-    ]
+def _parse_frontend_origins(value: str | None) -> list[str]:
+    if not value:
+        return ["*"]
+    origins = [origin.strip().rstrip("/") for origin in value.split(",")]
+    parsed = [origin for origin in origins if origin]
+    return parsed or ["*"]
+
+
+# CORS: allow the configured frontend origin(s) and localhost during development.
+frontend_origins = _parse_frontend_origins(settings.frontend_url)
+allow_any_origin = "*" in frontend_origins
+
+allowed_origins: list[str] = ["*"] if allow_any_origin else frontend_origins
+if not allow_any_origin and "http://localhost:3000" not in allowed_origins:
+    allowed_origins.append("http://localhost:3000")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True if settings.frontend_url != "*" else False,
+    allow_credentials=not allow_any_origin,
     allow_methods=["*"],
     allow_headers=["*"],
 )

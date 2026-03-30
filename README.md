@@ -179,6 +179,7 @@ Set the main values first:
 - `NEON_AUTH_COOKIE_SECRET`
 
 The frontend value should point at the backend root domain. If you accidentally include a trailing `/api`, the frontend strips it before making requests.
+On the backend, `FRONTEND_URL` may be a comma-separated list of frontend origins (for example, production + preview domains) and values are normalized for CORS matching.
 The Neon Auth values are used by the frontend auth handler and are separate from the backend `SECRET_KEY`.
 Neon Auth also requires each frontend origin to be trusted. For local development and manual Vercel setups, add `http://localhost:3000`, your production frontend URL, and any active preview URL to Neon Auth trusted origins.
 
@@ -259,7 +260,7 @@ If sign-in or sign-up returns `403` with `Invalid origin`, the current frontend 
   - `DATABASE_URL`
   - `REDIS_URL`
   - `SECRET_KEY`
-  - `FRONTEND_URL=https://your-frontend-domain.vercel.app`
+  - `FRONTEND_URL=https://your-frontend-domain.vercel.app` (or comma-separated frontend origins)
   - `DEBUG=false`
 - Optional tuning variables:
   - `MAX_PLAYLIST_LINKS`
