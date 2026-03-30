@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     total_tracks_limit: int = 50
     max_tracks_per_section: int = 20
     ytmusic_retry_attempts: int = 3
+    # Google OAuth for YouTube Music
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    youtube_oauth_redirect_uri: str = "http://localhost:8000/auth/youtube/callback"
+    # Feedback boost deltas (configurable)
+    feedback_like_boost: float = 10.0
+    feedback_dislike_penalty: float = 10.0
+    feedback_skip_penalty: float = 5.0
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),

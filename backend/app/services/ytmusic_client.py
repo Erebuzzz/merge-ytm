@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from tenacity import retry, stop_after_attempt, wait_exponential
-from ytmusicapi import YTMusic
+from ytmusicapi import YTMusic, OAuthCredentials
 
 from app.core.config import get_settings
 from app.schemas.api import TrackPayload
@@ -32,6 +32,11 @@ def extract_playlist_id(url_or_id: str) -> str:
     return playlist_ids[0]
 
 
+def _is_oauth_credentials(auth: dict[str, Any]) -> bool:
+    """Return True if the stored credentials are OAuth tokens (not raw headers)."""
+    return "access_token" in auth or "token" in auth
+
+
 class YTMusicService:
     def __init__(self, auth_headers: dict[str, Any] | None = None) -> None:
         self.auth_headers = auth_headers
@@ -42,7 +47,18 @@ class YTMusicService:
             handle, temp_path = tempfile.mkstemp(suffix=".json")
             with os.fdopen(handle, "w", encoding="utf-8") as temp_file:
                 json.dump(self.auth_headers, temp_file)
-            return YTMusic(temp_path), temp_path
+
+            if _is_oauth_credentials(self.auth_headers) and settings.google_client_id:
+                # OAuth path — ytmusicapi handles token refresh automatically
+                oauth_creds = OAuthCredentials(
+                    client_id=settings.google_client_id,
+                    client_secret=settings.google_client_secret,
+                )
+                return YTMusic(temp_path, oauth_credentials=oauth_creds), temp_path
+            else:
+                # Legacy headers_auth.json path
+                return YTMusic(temp_path), temp_path
+
         return YTMusic(), None
 
     def _run_with_client(self, callback):
@@ -52,6 +68,27 @@ class YTMusicService:
         finally:
             if temp_path and os.path.exists(temp_path):
                 os.remove(temp_path)
+
+    @retry(stop=stop_after_attempt(settings.ytmusic_retry_attempts), wait=wait_exponential(min=1, max=8), reraise=True)
+    def get_library_playlists(self, limit: int = 50) -> list[dict]:
+        """Return the authenticated user's YouTube Music library playlists."""
+        raw = self._run_with_client(lambda c: c.get_library_playlists(limit=limit))
+        return [
+            {
+                "id": p.get("playlistId", ""),
+                "title": p.get("title", ""),
+                "count": p.get("count", 0),
+                "thumbnail": (p.get("thumbnails") or [{}])[-1].get("url", ""),
+            }
+            for p in (raw or [])
+            if p.get("playlistId")
+        ]
+
+    @retry(stop=stop_after_attempt(settings.ytmusic_retry_attempts), wait=wait_exponential(min=1, max=8), reraise=True)
+    def get_liked_songs_count(self) -> int:
+        """Return the count of liked songs without fetching all tracks."""
+        payload = self._run_with_client(lambda c: c.get_liked_songs(limit=1))
+        return payload.get("trackCount", 0)
 
     @retry(stop=stop_after_attempt(settings.ytmusic_retry_attempts), wait=wait_exponential(min=1, max=8), reraise=True)
     def get_playlist_tracks(self, playlist_url: str) -> list[TrackPayload]:
@@ -134,18 +171,12 @@ class YTMusicService:
         if not video_ids:
             return []
 
-        # We seed the radio station with the first video ID
-        # ytmusicapi get_watch_playlist provides up next / radio
         def callback(client: YTMusic) -> list[TrackPayload]:
             payload = client.get_watch_playlist(videoId=video_ids[0])
             tracks: list[TrackPayload] = []
-            
-            # Skip the first track as it's the seed track
             for item in payload.get("tracks", [])[1:]:
-                # If we have multiple seeds, we probably shouldn't include them in the recommendations
                 if item.get("videoId") in video_ids:
                     continue
-                
                 track = track_from_ytmusic(item, source="algorithmic_recommendation")
                 if track and len(tracks) < limit:
                     tracks.append(track)

@@ -97,18 +97,23 @@ compatibility = 2 × |shared| / (|A| + |B|) × 100
 |---|---|---|
 | `GET` | `/` | Health / status |
 | `GET` | `/health` | Smoke check |
+| `GET` | `/auth/youtube/url` | Get Google OAuth URL for YouTube Music |
+| `GET` | `/auth/youtube/callback` | OAuth callback — stores token, redirects to frontend |
+| `GET` | `/user/youtube-status` | Check if user has connected YouTube Music |
+| `GET` | `/user/playlists` | List user's YouTube Music library playlists |
+| `GET` | `/user/liked-songs/count` | Count of liked songs |
 | `POST` | `/blend/create` | Create blend record |
-| `POST` | `/user/upload-auth` | Upload + encrypt auth headers |
+| `POST` | `/user/upload-auth` | Upload + encrypt auth headers (legacy) |
 | `POST` | `/playlist/fetch` | Fetch playlist tracks |
 | `GET` | `/blend/{id}` | Get blend detail |
-| `POST` | `/blend/generate` | Generate blend sections |
-| `POST` | `/blend/generate/async` | Dispatch async generation |
+| `POST` | `/blend/generate` | Generate blend sections (idempotent) |
+| `POST` | `/blend/generate/async` | Dispatch async generation (duplicate-safe) |
 | `POST` | `/ytmusic/create-playlist` | Export to YouTube Music |
 | `GET` | `/job/{job_id}` | Poll async job status |
 | `POST` | `/feedback/track` | Submit track feedback |
 | `POST` | `/feedback/blend` | Submit blend rating |
 
-All routes except `GET /` and `GET /health` require authentication.
+All routes except `GET /`, `GET /health`, and `GET /auth/youtube/callback` require authentication.
 
 ## Repository layout
 
@@ -222,7 +227,19 @@ cd backend
 pytest tests/ -v
 ```
 
-## Security notes
+## YouTube Music connection
+
+Merge supports three ways to connect YouTube Music, in order of preference:
+
+| Tier | Method | What it unlocks |
+|---|---|---|
+| 1 (primary) | Google OAuth via ytmusicapi | Library playlists, liked songs, export |
+| 2 (fallback) | `headers_auth.json` upload | Same as OAuth but manual |
+| 3 (no auth) | Public playlist URLs only | Blend from public playlists, no export |
+
+The OAuth flow: user clicks "Connect YouTube Music" → redirected to Google → approves → backend exchanges code for token → encrypts and stores → redirects to dashboard with success toast.
+
+Required env vars for OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `YOUTUBE_OAUTH_REDIRECT_URI`.
 
 - Auth headers are encrypted with Fernet (AES-128-CBC) before storage — plaintext is never persisted
 - File size is validated before processing (max 1 MB)

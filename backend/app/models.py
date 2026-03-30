@@ -34,6 +34,8 @@ class User(Base):
 
     encrypted_auth: Mapped[str | None] = mapped_column(Text, nullable=True)
     auth_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # "oauth" | "headers" | None — tracks how the user connected YouTube Music
+    auth_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     playlist_sources: Mapped[list["PlaylistSource"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 

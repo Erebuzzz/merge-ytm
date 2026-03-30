@@ -48,7 +48,7 @@ export default function RegisterPage() {
         
         <div className="relative z-10">
           <h1 className="text-3xl font-display font-black text-white text-center mb-2">Create Account</h1>
-          <p className="text-sm text-center text-text-muted mb-8">Join to build Spotify-style blends</p>
+          <p className="text-sm text-center text-text-muted mb-8">Join to build YouTube Music blends</p>
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div>

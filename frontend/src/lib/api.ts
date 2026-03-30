@@ -22,6 +22,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     cache: "no-store",
+    credentials: "include",
     ...init,
     headers: {
       ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -37,6 +38,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   return (await response.json()) as T;
 }
+
+// ---------------------------------------------------------------------------
+// Blend
+// ---------------------------------------------------------------------------
 
 export async function createBlend(payload: CreateBlendPayload): Promise<CreateBlendResponse> {
   return request<CreateBlendResponse>("/blend/create", {
@@ -60,10 +65,7 @@ export async function createBlend(payload: CreateBlendPayload): Promise<CreateBl
 export async function fetchPlaylistSources(blendId: string, sync = true): Promise<PlaylistFetchResponse> {
   return request<PlaylistFetchResponse>("/playlist/fetch", {
     method: "POST",
-    body: JSON.stringify({
-      blendId,
-      sync,
-    }),
+    body: JSON.stringify({ blendId, sync }),
   });
 }
 
@@ -74,9 +76,31 @@ export async function generateBlend(blendId: string): Promise<BlendDetail> {
   });
 }
 
+export async function generateBlendAsync(blendId: string): Promise<{ blendId: string; taskId?: string; jobId?: string; status: string }> {
+  return request("/blend/generate/async", {
+    method: "POST",
+    body: JSON.stringify({ blendId }),
+  });
+}
+
 export async function getBlend(blendId: string): Promise<BlendDetail> {
   return request<BlendDetail>(`/blend/${blendId}`);
 }
+
+export async function getJobStatus(jobId: string): Promise<{
+  jobId: string;
+  jobType: string;
+  status: string;
+  progress: number;
+  blendId: string;
+  errorMessage?: string | null;
+}> {
+  return request(`/job/${jobId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Auth upload (legacy / advanced)
+// ---------------------------------------------------------------------------
 
 export async function uploadAuth(userId: string, file: File): Promise<{ userId: string; status: string }> {
   const formData = new FormData();
@@ -87,6 +111,30 @@ export async function uploadAuth(userId: string, file: File): Promise<{ userId: 
     body: formData,
   });
 }
+
+// ---------------------------------------------------------------------------
+// YouTube Music OAuth
+// ---------------------------------------------------------------------------
+
+export async function getYouTubeAuthUrl(): Promise<{ url: string }> {
+  return request<{ url: string }>("/auth/youtube/url");
+}
+
+export async function getYouTubeStatus(): Promise<{ connected: boolean; method: "oauth" | "headers" | null }> {
+  return request("/user/youtube-status");
+}
+
+export async function getUserPlaylists(): Promise<Array<{ id: string; title: string; count: number; thumbnail: string }>> {
+  return request("/user/playlists");
+}
+
+export async function getLikedSongsCount(): Promise<{ count: number }> {
+  return request("/user/liked-songs/count");
+}
+
+// ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
 
 export async function createYTMusicPlaylist(payload: {
   blendId: string;
@@ -99,6 +147,10 @@ export async function createYTMusicPlaylist(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Feedback
+// ---------------------------------------------------------------------------
 
 export async function submitTrackFeedback(payload: {
   blendId: string;

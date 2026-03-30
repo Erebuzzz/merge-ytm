@@ -157,24 +157,26 @@ class BlendService:
         if not user_a_tracks and not user_b_tracks:
             raise ValueError("No tracks were available to generate the blend.")
 
-        # Compute feedback boosts from user A's feedback history
+        # Compute feedback boosts from BOTH users' feedback history
         from app.models import TrackFeedback
         from sqlalchemy import select as sa_select
+        from app.core.config import get_settings as _get_settings
+        _s = _get_settings()
 
         feedback_rows = self.db.scalars(
             sa_select(TrackFeedback).where(
-                TrackFeedback.user_id == blend.participant_a_id,
+                TrackFeedback.user_id.in_([blend.participant_a_id, blend.participant_b_id]),
                 TrackFeedback.blend_id == blend.id,
             )
         ).all()
-        feedback_boosts = {}
+        feedback_boosts: dict[str, float] = {}
         for row in feedback_rows:
             if row.action == "like":
-                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) + 10.0
+                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) + _s.feedback_like_boost
             elif row.action == "dislike":
-                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) - 10.0
+                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) - _s.feedback_dislike_penalty
             elif row.action == "skip":
-                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) - 5.0
+                feedback_boosts[row.track_id] = feedback_boosts.get(row.track_id, 0) - _s.feedback_skip_penalty
 
         result = generate_blend(user_a_tracks, user_b_tracks, feedback_boosts=feedback_boosts)
         sections = result["sections"]
@@ -235,6 +237,8 @@ class BlendService:
     def get_blend_detail(self, blend_id: str) -> BlendDetailResponse:
         blend = self._get_blend(blend_id)
         participants = self._participants_for_blend(blend)
+        name_a = participants[blend.participant_a_id].name
+        name_b = participants[blend.participant_b_id].name
         sections = [
             BlendSection(
                 title="Shared Taste",
@@ -242,13 +246,13 @@ class BlendService:
                 tracks=[TrackPayload.model_validate(item) for item in blend.tracks_common or []],
             ),
             BlendSection(
-                title="From User A",
-                description="Recommendations from User A that still fit the shared pocket.",
+                title=f"From {name_a}",
+                description=f"Recommendations from {name_a} that still fit the shared pocket.",
                 tracks=[TrackPayload.model_validate(item) for item in blend.tracks_a or []],
             ),
             BlendSection(
-                title="From User B",
-                description="Recommendations from User B that still fit the shared pocket.",
+                title=f"From {name_b}",
+                description=f"Recommendations from {name_b} that still fit the shared pocket.",
                 tracks=[TrackPayload.model_validate(item) for item in blend.tracks_b or []],
             ),
             BlendSection(

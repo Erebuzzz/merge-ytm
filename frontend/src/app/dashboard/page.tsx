@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/auth/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthUploadPanel } from "@/components/auth/auth-upload-panel";
 import { SectionCard } from "@/components/ui/section-card";
@@ -18,6 +18,17 @@ type BlendSummary = {
 
 export default function DashboardPage() {
   const { data: session, isPending } = useSession();
+  const searchParams = useSearchParams();
+  const [ytmToast, setYtmToast] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("ytm_connected") === "1") {
+      setYtmToast(true);
+      setTimeout(() => setYtmToast(false), 4000);
+      // Clean up URL
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, [searchParams]);
   const router = useRouter();
   const [blends, setBlends] = useState<BlendSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +64,13 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in-up">
+      {/* YouTube Music connected toast */}
+      {ytmToast && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-brand-ytmusic/30 bg-brand-ytmusic/10 px-5 py-3 shadow-xl animate-fade-in-up">
+          <span className="text-brand-ytmusic text-lg">✓</span>
+          <p className="text-sm font-bold text-white">YouTube Music connected successfully!</p>
+        </div>
+      )}
       <div className="flex items-center justify-between pb-6 border-b border-white/5">
         <div>
             <h1 className="text-4xl font-display font-black text-white">Dashboard</h1>

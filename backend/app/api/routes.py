@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import os
+import secrets
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth_middleware import get_current_user
-from app.core.security import validate_auth_file_size
+from app.core.config import get_settings
+from app.core.security import decrypt_auth_payload, encrypt_auth_payload, validate_auth_file_size
 from app.db.session import get_db
 from app.models import Blend, Job, User
 from app.schemas.api import (
@@ -23,10 +28,15 @@ from app.schemas.api import (
 )
 from app.services.blend_service import BlendService
 from app.services.feedback_service import FeedbackService
+from app.services.ytmusic_client import YTMusicService
 from app.tasks import fetch_playlist_sources_task, generate_blend_task
 
 router = APIRouter()
+settings = get_settings()
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _check_blend_ownership(blend_id: str, current_user: User, db: Session) -> None:
     """Raise 403 if current_user is not a participant in the blend."""
@@ -41,6 +51,10 @@ def _service(db: Session) -> BlendService:
     return BlendService(db)
 
 
+# ---------------------------------------------------------------------------
+# Health
+# ---------------------------------------------------------------------------
+
 @router.get("/")
 def read_root() -> dict[str, str]:
     return {"status": "ok", "message": "Backend is running"}
@@ -49,6 +63,130 @@ def read_root() -> dict[str, str]:
 def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
+
+# ---------------------------------------------------------------------------
+# YouTube Music OAuth
+# ---------------------------------------------------------------------------
+
+@router.get("/auth/youtube/url")
+def get_youtube_auth_url(
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    """Return the Google OAuth URL for YouTube Music access."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google OAuth is not configured.")
+
+    # Build the OAuth URL manually using Google's standard OAuth2 endpoint
+    # ytmusicapi's setup_oauth is designed for CLI use; we build the URL directly
+    state = secrets.token_urlsafe(16)
+    scope = "https://www.googleapis.com/auth/youtube"
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth"
+        f"?client_id={settings.google_client_id}"
+        f"&redirect_uri={settings.youtube_oauth_redirect_uri}"
+        f"&response_type=code"
+        f"&scope={scope}"
+        f"&access_type=offline"
+        f"&prompt=consent"
+        f"&state={current_user.id}"  # encode user_id in state
+    )
+    return {"url": auth_url}
+
+
+@router.get("/auth/youtube/callback")
+def youtube_oauth_callback(
+    code: str = Query(...),
+    state: str = Query(...),  # user_id encoded in state
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    """Exchange OAuth code for token, encrypt and store credentials, redirect to frontend."""
+    import httpx
+
+    if not settings.google_client_id:
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google OAuth is not configured.")
+
+    # Exchange code for tokens
+    token_response = httpx.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": settings.google_client_id,
+            "client_secret": settings.google_client_secret,
+            "redirect_uri": settings.youtube_oauth_redirect_uri,
+            "grant_type": "authorization_code",
+        },
+    )
+    if not token_response.is_success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to exchange OAuth code.")
+
+    token_data = token_response.json()
+    # token_data contains: access_token, refresh_token, expires_in, token_type, scope
+
+    user_id = state  # we encoded user_id in state
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    user.encrypted_auth = encrypt_auth_payload(token_data)
+    user.auth_uploaded_at = datetime.now(timezone.utc)
+    user.auth_method = "oauth"
+    db.commit()
+
+    # Redirect back to frontend dashboard
+    frontend = settings.frontend_url.rstrip("/") if settings.frontend_url != "*" else "http://localhost:3000"
+    return RedirectResponse(url=f"{frontend}/dashboard?ytm_connected=1")
+
+
+@router.get("/user/youtube-status")
+def get_youtube_status(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return whether the user has connected YouTube Music and via which method."""
+    return {
+        "connected": current_user.encrypted_auth is not None,
+        "method": current_user.auth_method,  # "oauth" | "headers" | None
+    }
+
+
+@router.get("/user/playlists")
+def get_user_playlists(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """Return the authenticated user's YouTube Music library playlists."""
+    if not current_user.encrypted_auth:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Connect YouTube Music first — use OAuth or upload headers_auth.json.",
+        )
+    auth = decrypt_auth_payload(current_user.encrypted_auth)
+    client = YTMusicService(auth_headers=auth)
+    try:
+        return client.get_library_playlists(limit=50)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch playlists: {exc}") from exc
+
+
+@router.get("/user/liked-songs/count")
+def get_liked_songs_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, int]:
+    """Return the count of liked songs for the authenticated user."""
+    if not current_user.encrypted_auth:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connect YouTube Music first.")
+    auth = decrypt_auth_payload(current_user.encrypted_auth)
+    client = YTMusicService(auth_headers=auth)
+    try:
+        count = client.get_liked_songs_count()
+        return {"count": count}
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch liked songs count: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# Blend
+# ---------------------------------------------------------------------------
 
 @router.post("/blend/create", response_model=BlendCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_blend(
@@ -83,7 +221,13 @@ async def upload_auth_file(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The uploaded file is not valid JSON.") from exc
 
     try:
-        return _service(db).save_auth_file(user_id=user_id, payload=payload)
+        result = _service(db).save_auth_file(user_id=user_id, payload=payload)
+        # Mark auth method as "headers" for legacy upload
+        user = db.get(User, user_id)
+        if user:
+            user.auth_method = "headers"
+            db.commit()
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -136,6 +280,15 @@ def generate_blend(
     current_user: User = Depends(get_current_user),
 ) -> BlendDetailResponse:
     _check_blend_ownership(payload.blend_id, current_user, db)
+
+    # Idempotency: if blend is already ready, return existing result
+    blend = db.get(Blend, payload.blend_id)
+    if blend and blend.status == "ready":
+        try:
+            return _service(db).get_blend_detail(payload.blend_id)
+        except ValueError:
+            pass
+
     try:
         return _service(db).generate_blend(payload)
     except ValueError as exc:
@@ -145,9 +298,24 @@ def generate_blend(
 @router.post("/blend/generate/async", status_code=status.HTTP_202_ACCEPTED)
 def generate_blend_async(
     payload: BlendGenerateRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
-    task = generate_blend_task.delay(payload.blend_id)
+    _check_blend_ownership(payload.blend_id, current_user, db)
+
+    # Duplicate job prevention: check for active running job
+    from sqlalchemy import select as sa_select
+    active_job = db.scalars(
+        sa_select(Job).where(
+            Job.blend_id == payload.blend_id,
+            Job.job_type == "generate",
+            Job.status == "running",
+        )
+    ).first()
+    if active_job:
+        return {"blendId": payload.blend_id, "jobId": active_job.id, "status": "already_running"}
+
+    task = generate_blend_task.delay(payload.blend_id, owner_id=current_user.id)
     return {"blendId": payload.blend_id, "taskId": task.id, "status": "queued"}
 
 
@@ -184,6 +352,10 @@ def get_job_status(
         "errorMessage": job.error_message,
     }
 
+
+# ---------------------------------------------------------------------------
+# Feedback
+# ---------------------------------------------------------------------------
 
 @router.post("/feedback/track", status_code=status.HTTP_200_OK)
 def submit_track_feedback(

@@ -4,6 +4,10 @@ Collaborator-focused technical review of the current codebase. Updated after the
 
 ## What was built
 
+This session added on top of the rebrand refactor:
+
+## What was built (rebrand + refactor)
+
 This refactor delivered the full rebrand from "YTMusic Sync" to "Merge" plus a set of new backend capabilities:
 
 - Auth middleware (`core/auth_middleware.py`) — session token validation on all protected routes
@@ -56,8 +60,9 @@ Frontend (Next.js + Zustand)
 **High priority:**
 
 - `Base.metadata.create_all()` is still used on startup — replace with Alembic migrations before any production data is at risk
-- The Celery worker is not deployed on Vercel — async job tracking only works if a separate worker process is running. The sync path (`POST /playlist/fetch?sync=true`) still works without it
+- The Celery worker is not deployed on Vercel — async job tracking only works if a separate worker process is running. The sync path still works without it
 - `ytmusicapi` is unofficial and can break on YouTube Music API changes — the retry layer helps but real telemetry around failure rates should be added
+- **Rotate the Google client secret** — it was exposed in chat. Go to [console.cloud.google.com/apis/credentials?project=merge-ytmusic](https://console.cloud.google.com/apis/credentials?project=merge-ytmusic) → Reset Secret
 
 **Medium priority:**
 
