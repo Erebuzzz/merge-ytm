@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "@/lib/auth/client";
+import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -17,19 +18,24 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const result = await signIn.email({
-      email,
-      password,
-      fetchOptions: {
-        onError: (ctx) => {
-          setError(ctx.error.message || "Invalid credentials." )
+    try {
+      await signIn.email({
+        email,
+        password,
+        fetchOptions: {
+          onError: (ctx) => {
+            setError(getAuthErrorMessage(ctx.error) || "Invalid credentials.");
+          },
+          onSuccess: () => {
+            router.push("/dashboard");
+          },
         },
-        onSuccess: () => {
-          router.push("/dashboard")
-        }
-      }
-    });
-    setLoading(false);
+      });
+    } catch (error) {
+      setError(getAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

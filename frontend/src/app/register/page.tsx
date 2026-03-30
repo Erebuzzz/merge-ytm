@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signUp } from "@/lib/auth/client";
+import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -18,20 +19,25 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    const result = await signUp.email({
+    try {
+      await signUp.email({
         email,
         password,
         name,
         fetchOptions: {
-            onError: (ctx) => {
-              setError(ctx.error.message || "Could not register.")
-            },
-            onSuccess: () => {
-              router.push("/dashboard")
-            }
-        }
-    });
-    setLoading(false);
+          onError: (ctx) => {
+            setError(getAuthErrorMessage(ctx.error) || "Could not register.");
+          },
+          onSuccess: () => {
+            router.push("/dashboard");
+          },
+        },
+      });
+    } catch (error) {
+      setError(getAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
