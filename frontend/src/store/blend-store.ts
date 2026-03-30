@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 import type { BlendDetail, CreateBlendPayload, ParticipantDraft } from "@/types/blend";
 
@@ -41,86 +42,91 @@ const createDraft = (): CreateBlendPayload => ({
   userB: createParticipant(),
 });
 
-export const useBlendStore = create<BlendStore>((set) => ({
-  draft: createDraft(),
-  result: null,
-  isSubmitting: false,
-  error: null,
-  trackFeedback: {},
-  blendRating: null,
-  blendQuickOption: null,
+const initialFeedbackState = {
+  trackFeedback: {} as Record<string, TrackAction | null>,
+  blendRating: null as number | null,
+  blendQuickOption: null as "accurate" | "missed_vibe" | null,
   hasSubmittedFeedback: false,
-  setParticipantName: (key, name) =>
-    set((state) => ({
-      draft: {
-        ...state.draft,
-        [key]: {
-          ...state.draft[key],
-          name,
-        },
-      },
-    })),
-  setPlaylistLink: (key, index, value) =>
-    set((state) => {
-      const nextLinks = [...state.draft[key].playlistLinks];
-      nextLinks[index] = value;
-      return {
-        draft: {
-          ...state.draft,
-          [key]: {
-            ...state.draft[key],
-            playlistLinks: nextLinks,
-          },
-        },
-      };
+};
+
+export const useBlendStore = create<BlendStore>()(
+  persist<BlendStore>(
+    (set) => ({
+      draft: createDraft(),
+      result: null,
+      isSubmitting: false,
+      error: null,
+      ...initialFeedbackState,
+
+      setParticipantName: (key: ParticipantKey, name: string) =>
+        set((state) => ({
+          draft: { ...state.draft, [key]: { ...state.draft[key], name } },
+        })),
+
+      setPlaylistLink: (key: ParticipantKey, index: number, value: string) =>
+        set((state) => {
+          const nextLinks = [...state.draft[key].playlistLinks];
+          nextLinks[index] = value;
+          return { draft: { ...state.draft, [key]: { ...state.draft[key], playlistLinks: nextLinks } } };
+        }),
+
+      addPlaylistLink: (key: ParticipantKey) =>
+        set((state) => {
+          if (state.draft[key].playlistLinks.length >= 5) return state;
+          return {
+            draft: {
+              ...state.draft,
+              [key]: { ...state.draft[key], playlistLinks: [...state.draft[key].playlistLinks, ""] },
+            },
+          };
+        }),
+
+      removePlaylistLink: (key: ParticipantKey, index: number) =>
+        set((state) => {
+          const nextLinks = state.draft[key].playlistLinks.filter((_: string, i: number) => i !== index);
+          return {
+            draft: {
+              ...state.draft,
+              [key]: { ...state.draft[key], playlistLinks: nextLinks.length ? nextLinks : [""] },
+            },
+          };
+        }),
+
+      setIncludeLikedSongs: (key: ParticipantKey, enabled: boolean) =>
+        set((state) => ({
+          draft: { ...state.draft, [key]: { ...state.draft[key], includeLikedSongs: enabled } },
+        })),
+
+      setResult: (result: BlendDetail | null) => set({ result }),
+      setSubmitting: (value: boolean) => set({ isSubmitting: value }),
+      setError: (value: string | null) => set({ error: value }),
+
+      setTrackFeedback: (trackId: string, action: TrackAction | null) =>
+        set((state) => ({ trackFeedback: { ...state.trackFeedback, [trackId]: action } })),
+
+      setBlendRating: (rating: number | null) => set({ blendRating: rating }),
+      setBlendQuickOption: (option: "accurate" | "missed_vibe" | null) => set({ blendQuickOption: option }),
+      setHasSubmittedFeedback: (value: boolean) => set({ hasSubmittedFeedback: value }),
+
+      reset: () =>
+        set({
+          draft: createDraft(),
+          result: null,
+          isSubmitting: false,
+          error: null,
+          ...initialFeedbackState,
+        }),
     }),
-  addPlaylistLink: (key) =>
-    set((state) => {
-      if (state.draft[key].playlistLinks.length >= 5) {
-        return state;
-      }
-      return {
-        draft: {
-          ...state.draft,
-          [key]: {
-            ...state.draft[key],
-            playlistLinks: [...state.draft[key].playlistLinks, ""],
-          },
-        },
-      };
-    }),
-  removePlaylistLink: (key, index) =>
-    set((state) => {
-      const nextLinks = state.draft[key].playlistLinks.filter((_, currentIndex) => currentIndex !== index);
-      return {
-        draft: {
-          ...state.draft,
-          [key]: {
-            ...state.draft[key],
-            playlistLinks: nextLinks.length ? nextLinks : [""],
-          },
-        },
-      };
-    }),
-  setIncludeLikedSongs: (key, enabled) =>
-    set((state) => ({
-      draft: {
-        ...state.draft,
-        [key]: {
-          ...state.draft[key],
-          includeLikedSongs: enabled,
-        },
-      },
-    })),
-  setResult: (result) => set({ result }),
-  setSubmitting: (value) => set({ isSubmitting: value }),
-  setError: (value) => set({ error: value }),
-  setTrackFeedback: (trackId, action) =>
-    set((state) => ({
-      trackFeedback: { ...state.trackFeedback, [trackId]: action },
-    })),
-  setBlendRating: (rating) => set({ blendRating: rating }),
-  setBlendQuickOption: (option) => set({ blendQuickOption: option }),
-  setHasSubmittedFeedback: (value) => set({ hasSubmittedFeedback: value }),
-  reset: () => set({ draft: createDraft(), result: null, isSubmitting: false, error: null, trackFeedback: {}, blendRating: null, blendQuickOption: null, hasSubmittedFeedback: false }),
-}));
+    {
+      name: "merge-blend-store",
+      storage: createJSONStorage(() => localStorage),
+      // Only persist feedback — draft and submission state are session-only
+      partialize: (state) => ({
+        trackFeedback: state.trackFeedback,
+        blendRating: state.blendRating,
+        blendQuickOption: state.blendQuickOption,
+        hasSubmittedFeedback: state.hasSubmittedFeedback,
+      }) as BlendStore,
+    },
+  ),
+);

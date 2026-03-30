@@ -31,6 +31,22 @@ def _diversity_factor(track: TrackPayload, track_pool: list[TrackPayload]) -> fl
     return 1 - ((current_artist_frequency - 1) / max_frequency)
 
 
+def _cooccurrence_boost(
+    track: TrackPayload,
+    artist_counts_a: Counter,
+    artist_counts_b: Counter,
+) -> float:
+    """Boost tracks whose artist appears in BOTH users' libraries."""
+    artist = normalize_artist(track.artist)
+    in_a = artist_counts_a.get(artist, 0)
+    in_b = artist_counts_b.get(artist, 0)
+    if in_a > 0 and in_b > 0:
+        # Both users have this artist — boost proportional to combined presence
+        combined = (in_a + in_b) / 2
+        return min(combined * 0.05, 0.15)  # cap at 0.15 (15 score points)
+    return 0.0
+
+
 def _score_track(
     track: TrackPayload,
     own_pool: list[TrackPayload],
@@ -86,9 +102,18 @@ def generate_blend(
     track_freq: Counter[str] = Counter(all_input_keys)
     max_freq = max(track_freq.values(), default=1)
 
+    # Co-occurrence: artist presence in both libraries
+    artist_counts_a: Counter[str] = Counter(normalize_artist(t.artist) for t in unique_a)
+    artist_counts_b: Counter[str] = Counter(normalize_artist(t.artist) for t in unique_b)
+
     def _score_with_freq(track: TrackPayload, own_pool: list[TrackPayload], opp_pool: list[TrackPayload]) -> TrackPayload:
         freq = track_freq.get(track.normalized_key or "", 1)
-        return _score_track(track, own_pool, opp_pool, common_tracks, overlap_ratio, freq, max_freq)
+        scored = _score_track(track, own_pool, opp_pool, common_tracks, overlap_ratio, freq, max_freq)
+        # Apply co-occurrence boost on top of base score
+        boost = _cooccurrence_boost(scored, artist_counts_a, artist_counts_b)
+        if boost:
+            scored = scored.model_copy(update={"score": round((scored.score or 0) + boost * 100, 2)})
+        return scored
 
     scored_a = sorted(
         (_score_with_freq(track, exclusive_a, exclusive_b) for track in exclusive_a),

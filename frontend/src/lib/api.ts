@@ -87,6 +87,11 @@ export async function getBlend(blendId: string): Promise<BlendDetail> {
   return request<BlendDetail>(`/blend/${blendId}`);
 }
 
+export function getBlendShareUrl(blendId: string): string {
+  const base = typeof window !== "undefined" ? window.location.origin : "";
+  return `${base}/blend/${blendId}`;
+}
+
 export async function getJobStatus(jobId: string): Promise<{
   jobId: string;
   jobType: string;

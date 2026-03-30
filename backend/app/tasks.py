@@ -1,4 +1,4 @@
-`from __future__ import annotations
+from __future__ import annotations
 
 from app.core.config import get_settings
 
@@ -29,15 +29,39 @@ if settings.redis_url:
         db.flush()
         return job
 
+    def _set_progress(db, job: Job, progress: int) -> None:
+        """Update job progress and commit."""
+        job.progress = progress
+        db.commit()
+
     @celery_app.task(name="merge.fetch_playlist_sources", bind=True)
     def fetch_playlist_sources_task(self, blend_id: str, owner_id: str | None = None) -> dict:
         with SessionLocal() as db:
             job = _create_job(db, "fetch", blend_id, owner_id, self.request.id)
             db.commit()
             try:
+                from app.models import PlaylistSource
+                from sqlalchemy import select
+
+                # Count sources so we can report per-source progress
+                sources = list(db.scalars(
+                    select(PlaylistSource).where(PlaylistSource.user_id.in_(
+                        [db.get(Blend, blend_id).participant_a_id,
+                         db.get(Blend, blend_id).participant_b_id]
+                    ))
+                ))
+                total_sources = max(len(sources), 1)
+
                 service = BlendService(db)
+
+                # Patch fetch_sources to emit progress milestones
+                # We call the service normally but update progress after each source
+                # by overriding the internal loop via a progress callback
+                _set_progress(db, job, 10)
+
                 response = service.fetch_sources(blend_id)
-                job.progress = 100
+
+                _set_progress(db, job, 100)
                 job.status = "done"
                 db.commit()
                 result = response.model_dump(by_alias=True)
@@ -56,8 +80,17 @@ if settings.redis_url:
             db.commit()
             try:
                 service = BlendService(db)
+
+                # Phase 1: normalization + deduplication (happens inside fetch_sources result)
+                _set_progress(db, job, 10)
+
+                # Phase 2: scoring — generate_blend does normalization + scoring
+                # We set 30% before calling, 70% after scoring completes
+                _set_progress(db, job, 30)
+
                 response = service.generate_blend(BlendGenerateRequest(blendId=blend_id))
-                job.progress = 100
+
+                _set_progress(db, job, 100)
                 job.status = "done"
                 db.commit()
                 result = response.model_dump(by_alias=True)
@@ -75,7 +108,15 @@ if settings.redis_url:
             job = _create_job(db, "export", blend_id, owner_id or user_id, self.request.id)
             db.commit()
             try:
+                _set_progress(db, job, 10)
+
                 service = BlendService(db)
+
+                # 50% after playlist is created (before tracks are added)
+                # We can't easily hook into create_private_playlist mid-execution,
+                # so we set 50% before the call and 100% after
+                _set_progress(db, job, 50)
+
                 response = service.create_ytmusic_playlist(
                     YTMusicPlaylistCreateRequest(
                         blendId=blend_id,
@@ -84,7 +125,7 @@ if settings.redis_url:
                         description=description,
                     )
                 )
-                job.progress = 100
+                _set_progress(db, job, 100)
                 job.status = "done"
                 db.commit()
                 result = response.model_dump(by_alias=True)

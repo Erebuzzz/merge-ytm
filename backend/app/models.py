@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func, Boolean
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def generate_uuid() -> str:
@@ -116,6 +116,9 @@ class Blend(TimestampMixin, Base):
 
 class Job(TimestampMixin, Base):
     __tablename__ = "jobs"
+    __table_args__ = (
+        Index("ix_job_blend_status", "blend_id", "status"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     job_type: Mapped[str] = mapped_column(String(20))   # "fetch" | "generate" | "export"
@@ -132,7 +135,10 @@ class Job(TimestampMixin, Base):
 
 class TrackFeedback(TimestampMixin, Base):
     __tablename__ = "track_feedback"
-    __table_args__ = (UniqueConstraint("user_id", "blend_id", "track_id", name="uq_track_feedback"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "blend_id", "track_id", name="uq_track_feedback"),
+        Index("ix_track_feedback_user_blend", "user_id", "blend_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)

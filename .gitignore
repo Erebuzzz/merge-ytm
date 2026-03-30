@@ -67,4 +67,3 @@ frontend/tsconfig.tsbuildinfo
 # ── Misc ──────────────────────────────────────────────────────────────────────
 .turbo/
 *.local
-CHECKLIST.md

@@ -3,8 +3,8 @@
 import { useSession } from "@/lib/auth/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AuthUploadPanel } from "@/components/auth/auth-upload-panel";
 import { SectionCard } from "@/components/ui/section-card";
+import { ConnectYouTubeMusic } from "@/components/auth/connect-youtube-music";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 
@@ -89,24 +89,28 @@ export default function DashboardPage() {
                      <div className="h-24 bg-surface-highlight/20 rounded-2xl w-full"></div>
                  </div>
             ) : blends.length === 0 ? (
-                <div className="bg-surface-highlight/20 border border-white/5 rounded-2xl p-8 text-center">
-                    <div className="text-4xl mb-4 opacity-50">💿</div>
-                    <h3 className="text-white font-bold mb-2">No Blends Yet</h3>
-                    <p className="text-sm text-text-muted mb-6">You haven't generated any private blends yet.</p>
-                    <Link href="/blend/create" className="px-5 py-2.5 rounded-full bg-brand-spotify text-black font-bold text-sm">Create your first blend</Link>
+                <div className="bg-surface-highlight/20 border border-white/5 rounded-2xl p-10 text-center space-y-4">
+                    <div className="w-20 h-20 mx-auto rounded-full bg-brand-ytmusic/10 flex items-center justify-center text-4xl">🎵</div>
+                    <div>
+                      <h3 className="text-white font-bold text-lg mb-1">No blends yet</h3>
+                      <p className="text-sm text-text-muted max-w-xs mx-auto">Connect YouTube Music and create your first blend to see your shared taste with a friend.</p>
+                    </div>
+                    <Link href="/blend/create" className="inline-flex px-6 py-3 rounded-full bg-white text-black font-bold text-sm hover:scale-105 transition shadow-lg">
+                      Create your first blend
+                    </Link>
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {blends.map((blend) => (
-                        <Link href={`/blend/${blend.id}`} key={blend.id} className="group glass-panel border border-white/5 rounded-2xl p-5 hover:border-brand-spotify transition-colors relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-spotify/5 mix-blend-screen rounded-full blur-[30px] group-hover:bg-brand-spotify/20 transition-all opacity-50 pointer-events-none" />
+                        <Link href={`/blend/${blend.id}`} key={blend.id} className="group glass-panel border border-white/5 rounded-2xl p-5 hover:border-brand-ytmusic transition-colors relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-ytmusic/5 mix-blend-screen rounded-full blur-[30px] group-hover:bg-brand-ytmusic/20 transition-all opacity-50 pointer-events-none" />
                             <div className="flex justify-between items-center relative z-10">
                                 <div>
                                     <h4 className="font-bold text-white text-lg">{blend.participant_a_name} + {blend.participant_b_name}</h4>
                                     <p className="text-xs text-text-muted mt-1">{new Date(blend.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-brand-spotify font-black text-2xl">{(blend.compatibility_score ?? 0).toFixed(0)}%</span>
+                                    <span className="text-brand-ytmusic font-black text-2xl">{(blend.compatibility_score ?? 0).toFixed(0)}%</span>
                                     <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Match</p>
                                 </div>
                             </div>
@@ -116,8 +120,13 @@ export default function DashboardPage() {
             )}
         </div>
 
-        <div>
-           <AuthUploadPanel presetUserId={session.user.id} />
+        <div className="space-y-6">
+          <SectionCard eyebrow="YouTube Music" title="Connection">
+            <ConnectYouTubeMusic
+              showLegacyOption
+              onLegacyUploadClick={() => router.push("/auth-upload")}
+            />
+          </SectionCard>
         </div>
       </div>
     </div>

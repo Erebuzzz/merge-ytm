@@ -34,15 +34,24 @@ app.add_middleware(RateLimiter)
 
 @app.on_event("startup")
 def on_startup() -> None:
-    """Create only public schema tables on startup."""
+    """Run Alembic migrations on startup (production-safe).
+    Falls back to create_all if Alembic is not configured (e.g. Vercel serverless).
+    """
     try:
-        public_tables = [
-            t for t in Base.metadata.sorted_tables
-            if t.schema is None
-        ]
-        Base.metadata.create_all(bind=engine, tables=public_tables)
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "alembic"))
+        command.upgrade(alembic_cfg, "head")
     except Exception:
-        pass
+        # Fallback: create_all for environments without Alembic (Vercel, tests)
+        try:
+            public_tables = [t for t in Base.metadata.sorted_tables if t.schema is None]
+            Base.metadata.create_all(bind=engine, tables=public_tables)
+        except Exception:
+            pass
 
 
 # backend/vercel.json rewrites all requests to this app, so the API is served at the root path.

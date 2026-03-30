@@ -194,6 +194,22 @@ def create_blend(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BlendCreateResponse:
+    # Rate limit: max 10 blends per user per hour
+    from sqlalchemy import select as sa_select, func
+    from datetime import timedelta
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent_count = db.scalar(
+        sa_select(func.count()).select_from(Blend).where(
+            (Blend.participant_a_id == current_user.id) | (Blend.participant_b_id == current_user.id),
+            Blend.created_at >= one_hour_ago,
+        )
+    ) or 0
+    if recent_count >= 10:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="You have created too many blends recently. Please wait before creating another.",
+            headers={"Retry-After": "3600"},
+        )
     try:
         return _service(db).create_blend(payload)
     except ValueError as exc:
