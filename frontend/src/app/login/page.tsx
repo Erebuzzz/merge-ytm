@@ -6,12 +6,142 @@ import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="flex-shrink-0">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+      <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
+
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    setError(null);
+    try {
+      await signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+      });
+    } catch (err) {
+      setError(getAuthErrorMessage(err) || "Google sign-in failed.");
+      setGoogleLoading(false);
+    }
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await signIn.email({
+        email,
+        password,
+        fetchOptions: {
+          onError: (ctx) => {
+            setError(getAuthErrorMessage(ctx.error) || "Invalid credentials.");
+          },
+          onSuccess: () => {
+            router.push("/dashboard");
+          },
+        },
+      });
+    } catch (error) {
+      setError(getAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex justify-center items-center min-h-[70vh] animate-fade-in-up">
+      <div className="glass-panel w-full max-w-md p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand-ytmusic/20 blur-[80px] mix-blend-screen pointer-events-none rounded-full" />
+
+        <div className="relative z-10">
+          <h1 className="text-3xl font-display font-black text-white text-center mb-2">Welcome Back</h1>
+          <p className="text-sm text-center text-text-muted mb-8">Sign in to sync to YouTube Music</p>
+
+          {/* Google sign-in */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white px-4 py-3 text-sm font-bold text-black transition-all hover:scale-[1.02] hover:shadow-lg disabled:opacity-60 disabled:hover:scale-100 mb-6"
+          >
+            <GoogleIcon />
+            {googleLoading ? "Redirecting..." : "Continue with Google"}
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-xs text-text-muted">or sign in with email</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-brand-ytred/10 border border-brand-ytred/20 text-brand-ytred text-xs font-medium px-4 py-2 flex items-center justify-center rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 rounded-full bg-white px-6 py-4 text-sm font-black tracking-wide text-black transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+
+          <div className="mt-8 text-center text-sm text-text-muted">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="text-white font-bold hover:underline">
+              Create one
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
