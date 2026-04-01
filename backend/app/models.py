@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, Boolean
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def generate_uuid() -> str:
@@ -85,7 +86,7 @@ class PlaylistSource(TimestampMixin, Base):
     __tablename__ = "playlist_sources"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     source_type: Mapped[str] = mapped_column(String(20))
     source_value: Mapped[str] = mapped_column(String(512))
     status: Mapped[str] = mapped_column(String(20), default="pending")
@@ -99,8 +100,8 @@ class Blend(TimestampMixin, Base):
     __tablename__ = "blends"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    participant_a_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
-    participant_b_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    participant_a_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    participant_b_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(24), default="pending")
     compatibility_score: Mapped[float] = mapped_column(Float, default=0.0)
     tracks_common: Mapped[list[dict]] = mapped_column(JSON, default=list)
@@ -121,11 +122,11 @@ class Job(TimestampMixin, Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    job_type: Mapped[str] = mapped_column(String(20))   # "fetch" | "generate" | "export"
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # "pending" | "running" | "done" | "failed"
-    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    job_type: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    progress: Mapped[int] = mapped_column(Integer, default=0)
     blend_id: Mapped[str] = mapped_column(ForeignKey("blends.id", ondelete="CASCADE"), index=True)
-    owner_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    owner_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     celery_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
@@ -141,10 +142,10 @@ class TrackFeedback(TimestampMixin, Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     blend_id: Mapped[str] = mapped_column(ForeignKey("blends.id", ondelete="CASCADE"), index=True)
-    track_id: Mapped[str] = mapped_column(String(512))  # normalized_key of the track
-    action: Mapped[str] = mapped_column(String(20))  # "like" | "dislike" | "skip"
+    track_id: Mapped[str] = mapped_column(String(512))
+    action: Mapped[str] = mapped_column(String(20))
 
 
 class BlendFeedback(TimestampMixin, Base):
@@ -152,7 +153,7 @@ class BlendFeedback(TimestampMixin, Base):
     __table_args__ = (UniqueConstraint("user_id", "blend_id", name="uq_blend_feedback"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
-    user_id: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
     blend_id: Mapped[str] = mapped_column(ForeignKey("blends.id", ondelete="CASCADE"), index=True)
-    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1-5 stars
-    quick_option: Mapped[str | None] = mapped_column(String(20), nullable=True)  # "accurate" | "missed_vibe"
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    quick_option: Mapped[str | None] = mapped_column(String(20), nullable=True)
