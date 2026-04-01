@@ -85,16 +85,16 @@ export default function RegisterPage() {
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Name</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
+              <label htmlFor="name" className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Name</label>
+              <input id="name" name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Email</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
+              <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Email</label>
+              <input id="email" name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Password</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
+              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Password</label>
+              <input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
             </div>
             {error && <div className="bg-brand-ytred/10 border border-brand-ytred/20 text-brand-ytred text-xs font-medium px-4 py-2 flex items-center justify-center rounded-lg">{error}</div>}
             <button type="submit" disabled={loading} className="w-full mt-2 rounded-full bg-white px-6 py-4 text-sm font-black tracking-wide text-black transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100">

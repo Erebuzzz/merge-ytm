@@ -20,14 +20,37 @@ type BlendSummary = {
 function YtmConnectedToast() {
   const searchParams = useSearchParams();
   const [show, setShow] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (searchParams.get("ytm_connected") === "1") {
+    const ytmConnected = searchParams.get("ytm_connected");
+    const error = searchParams.get("error");
+
+    if (ytmConnected === "1") {
       setShow(true);
       setTimeout(() => setShow(false), 4000);
       window.history.replaceState({}, "", "/dashboard");
     }
+
+    if (error) {
+      const messages: Record<string, string> = {
+        invalid_code: "Google OAuth failed — the authorization code was invalid or expired. Please try connecting again.",
+        access_denied: "Google sign-in was cancelled.",
+      };
+      setErrorMsg(messages[error] ?? `OAuth error: ${error}`);
+      window.history.replaceState({}, "", "/dashboard");
+    }
   }, [searchParams]);
+
+  if (errorMsg) {
+    return (
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-brand-ytred/30 bg-brand-ytred/10 px-5 py-3 shadow-xl animate-fade-in-up max-w-sm">
+        <span className="text-brand-ytred text-lg flex-shrink-0">⚠️</span>
+        <p className="text-sm font-medium text-white">{errorMsg}</p>
+        <button type="button" onClick={() => setErrorMsg(null)} className="text-text-muted hover:text-white ml-2 flex-shrink-0">✕</button>
+      </div>
+    );
+  }
 
   if (!show) return null;
 

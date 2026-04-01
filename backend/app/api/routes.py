@@ -96,11 +96,18 @@ def get_youtube_auth_url(
 @router.get("/auth/youtube/callback")
 def youtube_oauth_callback(
     code: str = Query(...),
-    state: str = Query(...),  # user_id encoded in state
+    state: str = Query(...),
+    error: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Exchange OAuth code for token, encrypt and store credentials, redirect to frontend."""
     import httpx
+
+    frontend = settings.frontend_url.rstrip("/") if settings.frontend_url != "*" else "http://localhost:3000"
+
+    # Handle OAuth errors (e.g. user denied access)
+    if error:
+        return RedirectResponse(url=f"{frontend}/dashboard?error={error}")
 
     if not settings.google_client_id:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google OAuth is not configured.")
@@ -117,23 +124,20 @@ def youtube_oauth_callback(
         },
     )
     if not token_response.is_success:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to exchange OAuth code.")
+        return RedirectResponse(url=f"{frontend}/dashboard?error=token_exchange_failed")
 
     token_data = token_response.json()
-    # token_data contains: access_token, refresh_token, expires_in, token_type, scope
 
-    user_id = state  # we encoded user_id in state
+    user_id = state
     user = db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        return RedirectResponse(url=f"{frontend}/dashboard?error=user_not_found")
 
     user.encrypted_auth = encrypt_auth_payload(token_data)
     user.auth_uploaded_at = datetime.now(timezone.utc)
     user.auth_method = "oauth"
     db.commit()
 
-    # Redirect back to frontend dashboard
-    frontend = settings.frontend_url.rstrip("/") if settings.frontend_url != "*" else "http://localhost:3000"
     return RedirectResponse(url=f"{frontend}/dashboard?ytm_connected=1")
 
 
