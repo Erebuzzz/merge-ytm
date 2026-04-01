@@ -23,10 +23,20 @@ Free, open-source, and community-driven.
 | Auth | Neon Auth (Better Auth) |
 | Music | `ytmusicapi` |
 
+## Deployment
+
+| Service | Platform |
+|---|---|
+| Frontend | Vercel (free) |
+| Backend API | Render (free, keep-alive via UptimeRobot) |
+| Celery worker | Fly.io (free) |
+| Redis | Upstash (free) |
+| PostgreSQL | Neon (free) |
+
 ## Documentation
 
 - [README.md](./README.md) — product overview, architecture, local setup
-- [DEPLOYMENT.md](./DEPLOYMENT.md) — Vercel deployment guide, env vars, smoke checks
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — Render + Fly.io + Upstash + Vercel deployment guide
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — contribution workflow and PR checklist
 - [SECURITY.md](./SECURITY.md) — secrets handling and vulnerability reporting
 - [code_review.md](./code_review.md) — technical review and known risk areas
@@ -249,6 +259,12 @@ Required env vars for OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `YOUTUB
 - Ownership checks prevent cross-user blend access
 
 See [SECURITY.md](./SECURITY.md) for full details.
+
+## Deployment
+
+The app deploys across four free platforms. See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full step-by-step guide.
+
+**Keep Render awake:** Render free services sleep after 15 minutes of inactivity. Set up a free [UptimeRobot](https://uptimerobot.com) monitor pointing at `https://your-app.onrender.com/health` with a 5-minute interval to keep it alive 24/7.
 
 ## Contributing
 

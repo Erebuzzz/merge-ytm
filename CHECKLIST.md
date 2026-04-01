@@ -167,64 +167,105 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
 
 ---
 
-## 🌍 10. Deployment — Railway + Vercel
+## 🌍 10. Deployment — Render + Fly.io + Upstash + Vercel
 
-### Railway — Backend
+### Infrastructure
 
-1. [railway.app](https://railway.app) → New Project
-2. Add PostgreSQL → copy `DATABASE_URL`
-3. Add Redis → copy `REDIS_URL`
-4. Add backend service → root: `backend` → start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Add Celery worker → root: `backend` → start: `celery -A app.tasks worker --loglevel=info`
-6. Set env vars on both services:
+| Service | Platform | Notes |
+|---|---|---|
+| Backend API | Render | Free, spins down after 15 min idle |
+| Celery worker | Fly.io | Free, always-on |
+| Redis | Upstash | Free, 10k req/day |
+| PostgreSQL | Neon | Already set up for auth |
+| Frontend | Vercel | Free forever |
+
+### Keep Render awake — UptimeRobot (free)
+
+Render free tier sleeps after 15 min of inactivity. First request after sleep takes ~30s.
+
+1. Go to [uptimerobot.com](https://uptimerobot.com) → sign up free
+2. **Add New Monitor** → HTTP(s)
+3. URL: `https://your-app.onrender.com/health`
+4. Interval: **5 minutes** → Save
+
+UptimeRobot pings `/health` every 5 min, keeping Render awake 24/7 at no cost.
+
+### Render — Backend API
+
+1. [render.com](https://render.com) → **New → Web Service** → connect GitHub repo
+2. Root Directory: `backend`, Build: `pip install -e ".[dev]"`, Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+3. Add env vars:
 
 ```
-DATABASE_URL=<from Railway PostgreSQL>
-REDIS_URL=<from Railway Redis>
+DATABASE_URL=<Neon URL — strip sslmode params>
+REDIS_URL=<Upstash Redis URL>
 SECRET_KEY=<python -c "import secrets; print(secrets.token_hex(32))">
 FRONTEND_URL=https://your-app.vercel.app
 DEBUG=false
 GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=<rotated-secret>
-YOUTUBE_OAUTH_REDIRECT_URI=https://your-backend.railway.app/auth/youtube/callback
+YOUTUBE_OAUTH_REDIRECT_URI=https://your-app.onrender.com/auth/youtube/callback
 FEEDBACK_LIKE_BOOST=10.0
 FEEDBACK_DISLIKE_PENALTY=10.0
 FEEDBACK_SKIP_PENALTY=5.0
 ```
 
-- [ ] PostgreSQL service created
-- [ ] Redis service created
-- [ ] Backend service created with correct start command
-- [ ] Celery worker service created
-- [ ] All env vars set on both services
+4. Deploy → copy Render URL
+
+- [ ] Render backend deployed
+- [ ] UptimeRobot monitor set up → pinging `/health` every 5 min
 - [ ] `GET /health` returns `{"status":"ok"}`
-- [ ] Railway URL added to Google Cloud Console authorized redirect URIs
+
+### Fly.io — Celery Worker
+
+```bash
+# Install flyctl (Windows PowerShell — close and reopen terminal after)
+iwr https://fly.io/install.ps1 -useb | iex
+
+fly auth login
+cd backend
+fly launch --name merge-celery-worker --no-deploy
+# No to Postgres, No to Redis when prompted
+
+fly secrets set \
+  DATABASE_URL="<Neon URL>" \
+  REDIS_URL="<Upstash URL>" \
+  SECRET_KEY="<same as Render>"
+
+fly deploy --command "celery -A app.tasks worker --loglevel=info --concurrency=2"
+fly logs   # verify: celery@xxxx ready. Concurrency: 2
+```
+
+- [ ] Fly.io worker deployed
+- [ ] `fly logs` shows `celery@xxxx ready`
 
 ### Vercel — Frontend
 
-1. New Project → root: `frontend`, preset: Next.js
+1. [vercel.com](https://vercel.com) → New Project → root: `frontend`, preset: Next.js
 2. Env vars:
+
 ```
-NEXT_PUBLIC_API_BASE_URL=https://your-backend.railway.app
+NEXT_PUBLIC_API_BASE_URL=https://your-app.onrender.com
 NEON_AUTH_BASE_URL=https://your-neon-auth-base-url
 NEON_AUTH_COOKIE_SECRET=<python -c "import secrets; print(secrets.token_hex(32))">
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.googleusercontent.com
 ```
+
 3. Deploy → copy production URL
 4. Add production URL to Neon Auth trusted origins
-5. Update `FRONTEND_URL` on Railway → redeploy backend
+5. Update `FRONTEND_URL` on Render → redeploy
 
-- [ ] Vercel project created
-- [ ] All env vars set
+- [ ] Vercel project created and deployed
 - [ ] Production URL added to Neon Auth trusted origins
-- [ ] `FRONTEND_URL` updated on Railway → redeployed
+- [ ] `FRONTEND_URL` updated on Render → redeployed
+- [ ] Render URL added to Google Cloud Console authorized redirect URIs
 
 ### Post-deploy smoke checks
 - [ ] Homepage loads
 - [ ] Sign up with new account
 - [ ] "Connect YouTube Music" → Google OAuth → dashboard shows toast
 - [ ] Playlist picker shows library playlists
-- [ ] Select playlists → generate blend → results page loads with participant names in section titles
+- [ ] Select playlists → generate blend → results page loads
 - [ ] Export to YouTube Music creates playlist
 - [ ] Submit track feedback (👍/👎/⏭)
 - [ ] Submit blend rating
@@ -268,9 +309,10 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
 ### Do before first deploy
 1. [x] ✅ Rotate Google client secret
 2. [x] ✅ OAuth consent screen scopes + test user added
-3. [ ] Run `alembic revision --autogenerate -m "initial"` locally and commit the migration file
-4. [ ] Railway + Vercel deployment (Section 10)
-5. [ ] Add Railway redirect URI to Google Cloud Console after deploy
+3. [x] ✅ Alembic migration generated and applied
+4. [ ] Render + Fly.io + Vercel deployment (Section 10)
+5. [ ] Set up UptimeRobot to keep Render awake
+6. [ ] Add Render URL to Google Cloud Console authorized redirect URIs
 
 ### Post-launch improvements
 6. [ ] Persist feedback state across page refreshes — ✅ done above
