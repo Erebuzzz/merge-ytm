@@ -31,18 +31,16 @@ Since the backend needs the frontend URL for CORS and OAuth, it's easiest to set
 
 ---
 
-## Step 3 — Render Backend & Worker
+## Step 3 — Render Backend & Worker (Unified Free Tier)
 
-We use Render's Blueprint to spin up both the FastAPI web server and the Celery background worker simultaneously.
+To avoid paying for a dedicated Background Worker, the application runs both the FastAPI web server and the Celery background worker inside a single, unified free Render Web Service via a `start.sh` background script.
 
 1. Go to [render.com](https://render.com)
 2. Click **New** → **Blueprint**
 3. Connect your GitHub repository.
-4. Render will automatically detect the `render.yaml` file in the `backend/` directory and propose creating three services in a group:
+4. Render will automatically detect the `render.yaml` file in the `backend/` directory and propose creating **one** service:
    - `merge-backend` (Web Service)
-   - `merge-celery-worker` (Background Worker)
-   - `merge-flower-dashboard` (Web Service)
-5. Fill in the identical environment variables for the services using the prompt instructions in Render:
+5. Fill in the environment variables for the service using the prompt instructions in Render:
 
 ```
 DATABASE_URL=<your Neon URL — no sslmode params, app handles SSL>
@@ -52,7 +50,6 @@ FRONTEND_URL=<your Vercel URL from Step 2>
 GOOGLE_CLIENT_ID=<from Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
 YOUTUBE_OAUTH_REDIRECT_URI=https://<your-render-url>/auth/youtube/callback
-FLOWER_BASIC_AUTH=admin:secretpassword123
 ```
 *(Wait until the web service finishes deploying to get its final URL for `YOUTUBE_OAUTH_REDIRECT_URI`, then update your environment logic in the render dashboard and redeploy.)*
 

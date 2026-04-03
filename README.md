@@ -25,12 +25,7 @@ Free, open-source, and community-driven.
 
 ## Deployment
 
-| Service | Platform |
-|---|---|
-| Frontend | Vercel (free) |
-| Backend API | Render (free, keep-alive via UptimeRobot) |
-| Celery worker | Render (background worker) |
-| Dashboard | Render (Flower UI) |
+| Backend API & Worker | Render (free single-container via start.sh) |
 | Redis | Upstash (free) |
 | PostgreSQL | Neon (free) |
 
@@ -54,8 +49,6 @@ flowchart LR
     B -->|"rate limiting"| E
     B -->|"fetch / export"| F["ytmusicapi"]
     F -->|"YouTube Music"| G["YTM API"]
-    H["Flower Dashboard"] -->|"monitor"| D
-    H -->|"read broker state"| E
 ```
 
 ## Request flow
