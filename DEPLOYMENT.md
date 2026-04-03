@@ -6,7 +6,7 @@
 |---|---|---|
 | Frontend | Vercel | Free forever |
 | Backend API | Render | Free (spins down after 15 min idle) |
-| Celery worker | Fly.io | Free (3 VMs forever) |
+| Celery worker | Render | Free (background worker) |
 | Redis | Upstash | Free (10k req/day) |
 | PostgreSQL | Neon | Free (already set up for auth) |
 
@@ -20,32 +20,41 @@
 
 ---
 
-## Step 2 — Render Backend
+## Step 2 — Vercel Frontend
 
-1. Go to [render.com](https://render.com) → **New → Web Service**
-2. Connect GitHub → select your repo
-3. Settings:
-   - **Root Directory**: `backend`
-   - **Build Command**: `pip install -e ".[dev]"`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Instance Type**: Free
-4. Add environment variables:
+Since the backend needs the frontend URL for CORS and OAuth, it's easiest to set up an empty Vercel project first to get your URL.
+
+1. Go to [vercel.com](https://vercel.com) → **Add New Project** → import repo
+2. **Root Directory**: `frontend`, **Framework**: Next.js
+3. We don't have the backend URL yet, but create the project anyway.
+4. Copy your production URL (e.g. `https://merge.vercel.app`)
+
+---
+
+## Step 3 — Render Backend & Worker
+
+We use Render's Blueprint to spin up both the FastAPI web server and the Celery background worker simultaneously.
+
+1. Go to [render.com](https://render.com)
+2. Click **New** → **Blueprint**
+3. Connect your GitHub repository.
+4. Render will automatically detect the `render.yaml` file in the `backend/` directory and propose creating three services in a group:
+   - `merge-backend` (Web Service)
+   - `merge-celery-worker` (Background Worker)
+   - `merge-flower-dashboard` (Web Service)
+5. Fill in the identical environment variables for the services using the prompt instructions in Render:
 
 ```
 DATABASE_URL=<your Neon URL — no sslmode params, app handles SSL>
 REDIS_URL=<your Upstash Redis URL>
 SECRET_KEY=<python -c "import secrets; print(secrets.token_hex(32))">
-FRONTEND_URL=https://your-app.vercel.app
-DEBUG=false
+FRONTEND_URL=<your Vercel URL from Step 2>
 GOOGLE_CLIENT_ID=<from Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
-YOUTUBE_OAUTH_REDIRECT_URI=https://your-app.onrender.com/auth/youtube/callback
-FEEDBACK_LIKE_BOOST=10.0
-FEEDBACK_DISLIKE_PENALTY=10.0
-FEEDBACK_SKIP_PENALTY=5.0
+YOUTUBE_OAUTH_REDIRECT_URI=https://<your-render-url>/auth/youtube/callback
+FLOWER_BASIC_AUTH=admin:secretpassword123
 ```
-
-5. Deploy → copy your Render URL (e.g. `merge-backend.onrender.com`)
+*(Wait until the web service finishes deploying to get its final URL for `YOUTUBE_OAUTH_REDIRECT_URI`, then update your environment logic in the render dashboard and redeploy.)*
 
 ### Keep Render awake (free)
 
@@ -53,60 +62,9 @@ Render free services spin down after 15 minutes of inactivity. The first request
 
 1. Go to [uptimerobot.com](https://uptimerobot.com) → sign up free
 2. **Add New Monitor** → HTTP(s)
-3. URL: `https://your-app.onrender.com/health`
+3. URL: `https://merge-backend.onrender.com/health` (Replace with actual URL)
 4. Monitoring interval: **5 minutes**
 5. Save
-
-UptimeRobot pings `/health` every 5 minutes, keeping Render awake 24/7 at no cost.
-
----
-
-## Step 3 — Fly.io Celery Worker
-
-The Celery worker only needs 3 env vars — it shares the same DB and Redis as the backend.
-
-### Install flyctl
-
-```powershell
-# Windows PowerShell
-iwr https://fly.io/install.ps1 -useb | iex
-```
-
-Close and reopen terminal, then:
-
-```bash
-fly auth login
-```
-
-### Deploy
-
-```bash
-cd backend
-fly launch --name merge-celery-worker --no-deploy
-# When prompted: No to Postgres, No to Redis
-```
-
-Set secrets:
-
-```bash
-fly secrets set \
-  DATABASE_URL="<your Neon URL>" \
-  REDIS_URL="<your Upstash Redis URL>" \
-  SECRET_KEY="<same value as Render>"
-```
-
-Deploy as a worker process:
-
-```bash
-fly deploy --command "celery -A app.tasks worker --loglevel=info --concurrency=2"
-```
-
-Verify:
-
-```bash
-fly logs
-# Should show: celery@xxxx ready. Concurrency: 2
-```
 
 ---
 
@@ -117,53 +75,33 @@ Add your Render URL to authorized redirect URIs:
 1. Go to [console.cloud.google.com/apis/credentials?project=merge-ytmusic](https://console.cloud.google.com/apis/credentials?project=merge-ytmusic)
 2. Click your OAuth 2.0 Client ID
 3. **Authorized redirect URIs** → **+ Add URI**
-4. Add: `https://your-app.onrender.com/auth/youtube/callback`
+4. Add: `https://merge-backend.onrender.com/auth/youtube/callback`
 5. Save
 
 ---
 
-## Step 5 — Vercel Frontend
+## Step 5 — Finalize Vercel Frontend
 
-1. Go to [vercel.com](https://vercel.com) → **Add New Project** → import repo
-2. **Root Directory**: `frontend`, **Framework**: Next.js
-3. Add environment variables:
+Now that you have your backend, return to Vercel to update your frontend environment variables.
+
+1. In the Vercel Dashboard, go to your project → **Settings** → **Environment Variables**
+2. Add the following:
 
 ```
-NEXT_PUBLIC_API_BASE_URL=https://your-app.onrender.com
-NEON_AUTH_BASE_URL=https://your-neon-auth-base-url
+NEXT_PUBLIC_API_BASE_URL=https://<your-render-url>
+NEON_AUTH_BASE_URL=https://<your-neon-auth-base-url>
 NEON_AUTH_COOKIE_SECRET=<python -c "import secrets; print(secrets.token_hex(32))">
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=<from Google Cloud Console>
 ```
 
-4. Deploy → copy production URL (e.g. `https://merge.vercel.app`)
+3. Go to **Deployments** and click **Redeploy**.
 
 ---
 
-## Step 6 — Wire everything together
+## Step 6 — Neon Auth Configuration
 
-1. **Neon Auth** → add `https://merge.vercel.app` to trusted origins
-2. **Render** → update `FRONTEND_URL=https://merge.vercel.app` → redeploy
-3. **Fly** → no changes needed (worker doesn't use FRONTEND_URL)
-
----
-
-## Environment variable reference
-
-| Variable | Render | Fly worker | Vercel |
-|---|---|---|---|
-| `DATABASE_URL` | ✅ | ✅ | — |
-| `REDIS_URL` | ✅ | ✅ | — |
-| `SECRET_KEY` | ✅ | ✅ | — |
-| `FRONTEND_URL` | ✅ | — | — |
-| `DEBUG` | ✅ | — | — |
-| `GOOGLE_CLIENT_ID` | ✅ | — | — |
-| `GOOGLE_CLIENT_SECRET` | ✅ | — | — |
-| `YOUTUBE_OAUTH_REDIRECT_URI` | ✅ | — | — |
-| `FEEDBACK_*` | ✅ | — | — |
-| `NEXT_PUBLIC_API_BASE_URL` | — | — | ✅ |
-| `NEON_AUTH_BASE_URL` | — | — | ✅ |
-| `NEON_AUTH_COOKIE_SECRET` | — | — | ✅ |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | — | — | ✅ |
+1. In the Neon Console → Auth → Settings
+2. Add `https://merge.vercel.app` (your frontend URL) to the **Allowed Origins / Trusted Origins**.
 
 ---
 
@@ -171,38 +109,14 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=<from Google Cloud Console>
 
 ```bash
 # Backend
-curl https://your-app.onrender.com/health
+curl https://merge-backend.onrender.com/health
 # → {"status":"ok"}
-
-# Celery worker
-fly logs --app merge-celery-worker
-# → celery@xxxx ready. Concurrency: 2
 ```
 
 Browser checks:
-1. Homepage loads
+1. Homepage loads correctly
 2. Sign up → dashboard loads
 3. "Connect YouTube Music" → OAuth flow → toast appears
 4. Create blend → results page loads
-5. Export to YouTube Music
-6. Sign out → protected routes return 401
-
----
-
-## Common failure modes
-
-### Render returns 502 or times out on first request
-Free tier is sleeping. Wait 30 seconds and retry. Set up UptimeRobot (Step 2) to prevent this.
-
-### OAuth callback fails
-- Check `YOUTUBE_OAUTH_REDIRECT_URI` on Render matches exactly what's in Google Cloud Console
-- Check the URI is added to authorized redirect URIs in Google Cloud Console
-
-### Celery jobs not processing
-- Check `fly logs` — worker may have crashed
-- Verify `REDIS_URL` is identical on both Render and Fly
-- Check Upstash dashboard for connection count
-
-### Auth returns `403 Invalid origin`
-- Add your Vercel production URL to Neon Auth trusted origins
-- Make sure `NEON_AUTH_BASE_URL` is correct in Vercel env vars
+5. Export to YouTube Music succeeds without errors
+6. Sign out → protected routes enforce redirect

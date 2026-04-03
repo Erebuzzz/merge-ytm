@@ -29,14 +29,15 @@ Free, open-source, and community-driven.
 |---|---|
 | Frontend | Vercel (free) |
 | Backend API | Render (free, keep-alive via UptimeRobot) |
-| Celery worker | Fly.io (free) |
+| Celery worker | Render (background worker) |
+| Dashboard | Render (Flower UI) |
 | Redis | Upstash (free) |
 | PostgreSQL | Neon (free) |
 
 ## Documentation
 
 - [README.md](./README.md) — product overview, architecture, local setup
-- [DEPLOYMENT.md](./DEPLOYMENT.md) — Render + Fly.io + Upstash + Vercel deployment guide
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — Render + Upstash + Vercel deployment guide
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — contribution workflow and PR checklist
 - [SECURITY.md](./SECURITY.md) — secrets handling and vulnerability reporting
 - [code_review.md](./code_review.md) — technical review and known risk areas
@@ -53,6 +54,8 @@ flowchart LR
     B -->|"rate limiting"| E
     B -->|"fetch / export"| F["ytmusicapi"]
     F -->|"YouTube Music"| G["YTM API"]
+    H["Flower Dashboard"] -->|"monitor"| D
+    H -->|"read broker state"| E
 ```
 
 ## Request flow
@@ -62,6 +65,7 @@ flowchart LR
 3. Route handler delegates to `BlendService`, which orchestrates `YTMusicService`, `NormalizationService`, `BlendEngine`, and `FeedbackService`.
 4. Long-running operations (fetch, generate, export) are dispatched to Celery. A `Job` record is created and its `job_id` returned immediately.
 5. The client polls `GET /job/{job_id}` with exponential backoff until `done` or `failed`.
+6. Background tasks and broker state are monitored via the independent **Flower dashboard**.
 
 ## Blend engine
 

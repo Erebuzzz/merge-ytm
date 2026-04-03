@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "@/lib/auth/client";
-import { getAuthErrorMessage } from "@/lib/auth/errors";
+import { getYouTubeAuthUrl } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 function GoogleIcon() {
   return (
@@ -18,41 +16,22 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const router = useRouter();
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     setError(null);
     try {
-      await signIn.social({ provider: "google", callbackURL: "/dashboard" });
-    } catch (err) {
-      setError(getAuthErrorMessage(err) || "Google sign-in failed.");
+      const res = await getYouTubeAuthUrl();
+      if (res.url) {
+        window.location.href = res.url;
+      } else {
+        throw new Error("Unable to retrieve authorization URL.");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Google sign-in failed.");
       setGoogleLoading(false);
-    }
-  }
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      await signIn.email({
-        email,
-        password,
-        fetchOptions: {
-          onError: (ctx) => setError(getAuthErrorMessage(ctx.error) || "Invalid credentials."),
-          onSuccess: () => router.push("/dashboard"),
-        },
-      });
-    } catch (err) {
-      setError(getAuthErrorMessage(err));
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -61,44 +40,30 @@ export default function LoginPage() {
       <div className="glass-panel w-full max-w-md p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-brand-ytmusic/20 blur-[80px] mix-blend-screen pointer-events-none rounded-full" />
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col items-center">
           <h1 className="text-3xl font-display font-black text-white text-center mb-2">Welcome Back</h1>
-          <p className="text-sm text-center text-text-muted mb-8">Sign in to sync to YouTube Music</p>
+          <p className="text-sm text-center text-text-muted mb-8 leading-relaxed">
+            Link your Google account to automatically import your library and connect to YouTube Music.
+          </p>
 
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white px-4 py-3 text-sm font-bold text-black transition-all hover:scale-[1.02] hover:shadow-lg disabled:opacity-60 disabled:hover:scale-100 mb-6"
+            className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white px-4 py-4 text-sm font-bold text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:opacity-60 disabled:hover:scale-100 mb-6"
           >
             <GoogleIcon />
-            {googleLoading ? "Redirecting..." : "Continue with Google"}
+            {googleLoading ? "Redirecting to Google..." : "Continue with Google"}
           </button>
 
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-xs text-text-muted">or sign in with email</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Email</label>
-              <input id="email" name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
+          {error && (
+            <div className="bg-brand-ytred/10 border border-brand-ytred/20 text-brand-ytred text-xs font-medium px-4 py-3 text-center mb-2 rounded-lg w-full">
+              {error}
             </div>
-            <div>
-              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Password</label>
-              <input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="w-full rounded-xl border border-white/10 bg-surface-highlight/50 px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-ytmusic focus:ring-1 focus:ring-brand-ytmusic focus:bg-surface-elevated shadow-inner" />
-            </div>
-            {error && <div className="bg-brand-ytred/10 border border-brand-ytred/20 text-brand-ytred text-xs font-medium px-4 py-2 flex items-center justify-center rounded-lg">{error}</div>}
-            <button type="submit" disabled={loading} className="w-full mt-2 rounded-full bg-white px-6 py-4 text-sm font-black tracking-wide text-black transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100">
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
+          )}
 
-          <div className="mt-8 text-center text-sm text-text-muted">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-white font-bold hover:underline">Create one</Link>
+          <div className="mt-6 text-center text-xs text-text-muted opacity-70">
+            By connecting, you allow Merge to securely sync your playlists.
           </div>
         </div>
       </div>

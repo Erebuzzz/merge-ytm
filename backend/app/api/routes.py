@@ -69,17 +69,13 @@ def healthcheck() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 @router.get("/auth/youtube/url")
-def get_youtube_auth_url(
-    current_user: User = Depends(get_current_user),
-) -> dict[str, str]:
+def get_youtube_auth_url() -> dict[str, str]:
     """Return the Google OAuth URL for YouTube Music access."""
     if not settings.google_client_id:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google OAuth is not configured.")
 
-    # Build the OAuth URL manually using Google's standard OAuth2 endpoint
-    # ytmusicapi's setup_oauth is designed for CLI use; we build the URL directly
     state = secrets.token_urlsafe(16)
-    scope = "https://www.googleapis.com/auth/youtube"
+    scope = "https://www.googleapis.com/auth/youtube openid email profile"
     auth_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth"
         f"?client_id={settings.google_client_id}"
@@ -88,7 +84,7 @@ def get_youtube_auth_url(
         f"&scope={scope}"
         f"&access_type=offline"
         f"&prompt=consent"
-        f"&state={current_user.id}"  # encode user_id in state
+        f"&state={state}"
     )
     return {"url": auth_url}
 
@@ -100,19 +96,21 @@ def youtube_oauth_callback(
     error: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    """Exchange OAuth code for token, encrypt and store credentials, redirect to frontend."""
+    """Exchange OAuth code for token, decode id_token, login user cleanly via DB mapping."""
     import httpx
+    import base64
+    from datetime import timedelta
+    from sqlalchemy import select
+    from app.models import Session as AuthSession, generate_uuid
 
     frontend = settings.frontend_url.rstrip("/") if settings.frontend_url != "*" else "http://localhost:3000"
 
-    # Handle OAuth errors (e.g. user denied access)
     if error:
-        return RedirectResponse(url=f"{frontend}/dashboard?error={error}")
+        return RedirectResponse(url=f"{frontend}/login?error={error}")
 
     if not settings.google_client_id:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google OAuth is not configured.")
 
-    # Exchange code for tokens
     token_response = httpx.post(
         "https://oauth2.googleapis.com/token",
         data={
@@ -124,21 +122,68 @@ def youtube_oauth_callback(
         },
     )
     if not token_response.is_success:
-        return RedirectResponse(url=f"{frontend}/dashboard?error=token_exchange_failed")
+        return RedirectResponse(url=f"{frontend}/login?error=token_exchange_failed")
 
     token_data = token_response.json()
+    id_token = token_data.get("id_token")
+    if not id_token:
+        return RedirectResponse(url=f"{frontend}/login?error=missing_id_token")
 
-    user_id = state
-    user = db.get(User, user_id)
+    # Decode standard Google JWT
+    try:
+        payload_part = id_token.split(".")[1]
+        padded = payload_part + "=" * (-len(payload_part) % 4)
+        id_payload = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+    except Exception:
+        return RedirectResponse(url=f"{frontend}/login?error=invalid_id_token")
+
+    email = id_payload.get("email")
+    if not email:
+        return RedirectResponse(url=f"{frontend}/login?error=email_not_provided")
+
+    user = db.scalars(select(User).where(User.email == email)).first()
+    now_ts = datetime.now(timezone.utc)
+
     if not user:
-        return RedirectResponse(url=f"{frontend}/dashboard?error=user_not_found")
+        user = User(
+            id=generate_uuid(),
+            email=email,
+            name=id_payload.get("name") or email.split("@")[0],
+            emailVerified=True,
+            image=id_payload.get("picture"),
+            createdAt=now_ts,
+            updatedAt=now_ts,
+        )
+        db.add(user)
+        db.flush()
 
     user.encrypted_auth = encrypt_auth_payload(token_data)
-    user.auth_uploaded_at = datetime.now(timezone.utc)
+    user.auth_uploaded_at = now_ts
     user.auth_method = "oauth"
+
+    session_token = secrets.token_urlsafe(32)
+    auth_session = AuthSession(
+        id=generate_uuid(),
+        expiresAt=now_ts + timedelta(days=30),
+        token=session_token,
+        createdAt=now_ts,
+        updatedAt=now_ts,
+        userId=user.id
+    )
+    db.add(auth_session)
     db.commit()
 
-    return RedirectResponse(url=f"{frontend}/dashboard?ytm_connected=1")
+    response = RedirectResponse(url=f"{frontend}/dashboard")
+    response.set_cookie(
+        key="better-auth.session_token",
+        value=session_token,
+        max_age=30 * 24 * 60 * 60,
+        path="/",
+        secure=not frontend.startswith("http://localhost"),
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/user/youtube-status")

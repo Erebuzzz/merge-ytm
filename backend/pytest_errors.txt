@@ -1,0 +1,11 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-7.4.3, pluggy-1.6.0
+rootdir: D:\ytmusic-sync\backend
+plugins: anyio-4.10.0, dash-3.2.0, hypothesis-6.151.10, asyncio-0.21.1
+asyncio: mode=Mode.STRICT
+collected 24 items
+
+tests\test_blend_engine.py ..                                            [  8%]
+tests\test_properties.py ......................                          [100%]
+
+============================= 24 passed in 14.86s =============================

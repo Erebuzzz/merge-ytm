@@ -12,12 +12,15 @@ from app.models import Session as AuthSession, User
 def get_current_user(
     authorization: str | None = Header(default=None),
     session: str | None = Cookie(default=None),
+    better_auth_session: str | None = Cookie(default=None, alias="better-auth.session_token"),
     db: DBSession = Depends(get_db),
 ) -> User:
     token: str | None = None
 
     if authorization and authorization.startswith("Bearer "):
         token = authorization.removeprefix("Bearer ").strip()
+    elif better_auth_session:
+        token = better_auth_session
     elif session:
         token = session
 

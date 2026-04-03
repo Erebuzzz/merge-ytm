@@ -19,6 +19,17 @@ services:
     volumes:
       - redis_data:/data
 
+  flower:
+    image: mher/flower:3.0.1
+    container_name: merge-flower
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      FLOWER_PORT: 5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
 volumes:
   postgres_data:
   redis_data:
