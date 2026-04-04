@@ -28,7 +28,11 @@ if settings.redis_url:
     if sentry_dsn:
         sentry_sdk.init(
             dsn=sentry_dsn,
+            send_default_pii=True,
+            enable_logs=True,
             traces_sample_rate=1.0,
+            profiles_sample_rate=1.0,
+            profile_session_sample_rate=1.0,
         )
 
     def _create_job(db, job_type: str, blend_id: str, owner_id: str | None, celery_task_id: str | None = None) -> Job:

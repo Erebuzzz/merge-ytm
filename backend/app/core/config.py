@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     feedback_like_boost: float = 10.0
     feedback_dislike_penalty: float = 10.0
     feedback_skip_penalty: float = 5.0
+    
+    # Optional Sentry tracking element
+    sentry_dsn: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),

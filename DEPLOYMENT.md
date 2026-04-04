@@ -56,6 +56,7 @@ FRONTEND_URL=<your Vercel URL from Step 2>
 GOOGLE_CLIENT_ID=<from Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
 YOUTUBE_OAUTH_REDIRECT_URI=https://<your-render-url>/auth/youtube/callback
+SENTRY_DSN=<your Python project Sentry DSN — required for crash tracking>
 ```
 *(Wait until the web service finishes deploying to get its final URL for `YOUTUBE_OAUTH_REDIRECT_URI`, then update your environment logic in the render dashboard and redeploy.)*
 
@@ -95,6 +96,7 @@ NEXT_PUBLIC_API_BASE_URL=https://<your-render-url>
 NEON_AUTH_BASE_URL=https://<your-neon-auth-base-url>
 NEON_AUTH_COOKIE_SECRET=<python -c "import secrets; print(secrets.token_hex(32))">
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=<from Google Cloud Console>
+NEXT_PUBLIC_SENTRY_DSN=<your Next.js project Sentry DSN>
 ```
 
 3. Go to **Deployments** and click **Redeploy**.

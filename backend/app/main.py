@@ -15,8 +15,11 @@ settings = get_settings()
 if settings.sentry_dsn:
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
+        send_default_pii=True,
+        enable_logs=True,
         traces_sample_rate=1.0,
         profiles_sample_rate=1.0,
+        profile_session_sample_rate=1.0,
     )
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, debug=settings.debug)
