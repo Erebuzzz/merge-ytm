@@ -15,6 +15,8 @@ if settings.redis_url:
     from app.schemas.api import BlendGenerateRequest, YTMusicPlaylistCreateRequest
     from app.services.blend_service import BlendService
 
+    import ssl
+    
     celery_app.conf.update(
         task_serializer="json",
         accept_content=["json"],
@@ -23,6 +25,12 @@ if settings.redis_url:
         enable_utc=True,
         broker_connection_retry_on_startup=True,
     )
+
+    if settings.redis_url.startswith("rediss://"):
+        celery_app.conf.update(
+            broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+            redis_backend_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+        )
 
     sentry_dsn = os.getenv("SENTRY_DSN")
     if sentry_dsn:
