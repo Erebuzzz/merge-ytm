@@ -29,6 +29,7 @@ export function ConnectYouTubeMusic({ onStatusChange, showLegacyOption = true, o
       })
       .catch(() => setStatus({ connected: false, method: null }))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleConnect() {

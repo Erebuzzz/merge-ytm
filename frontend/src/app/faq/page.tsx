@@ -56,7 +56,7 @@ export default function FAQPage() {
             Each track row shows <strong>👍 👎 ⏭</strong> controls on hover. Your feedback is stored and used to boost or penalize tracks in future blends — liked tracks score higher, skipped tracks score lower.
           </p>
           <p>
-            After viewing the playlist you can also rate the overall blend (1–5 stars) and leave a quick note ("Felt accurate" or "Missed the vibe"). This helps improve the algorithm over time.
+            After viewing the playlist you can also rate the overall blend (1–5 stars) and leave a quick note (&quot;Felt accurate&quot; or &quot;Missed the vibe&quot;). This helps improve the algorithm over time.
           </p>
           <p>All feedback is optional and dismissible — it never blocks your workflow.</p>
         </div>

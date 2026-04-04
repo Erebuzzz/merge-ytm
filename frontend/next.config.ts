@@ -4,7 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
-    domains: ["lh3.googleusercontent.com"], 
+    domains: ["lh3.googleusercontent.com", "img.icons8.com", "yt3.ggpht.com"], 
   },
 };
 
@@ -15,7 +15,5 @@ export default withSentryConfig(
     project: "merge-frontend",
     silent: true, // Suppresses all logs
     widenClientFileUpload: true,
-    hideSourceMaps: true,
-    disableLogger: true,
   }
 );

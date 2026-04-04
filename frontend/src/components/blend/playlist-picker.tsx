@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
 import { getUserPlaylists, getLikedSongsCount } from "@/lib/api";
 
 type Playlist = { id: string; title: string; count: number; thumbnail: string };
