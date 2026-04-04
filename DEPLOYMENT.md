@@ -31,16 +31,22 @@ Since the backend needs the frontend URL for CORS and OAuth, it's easiest to set
 
 ---
 
-## Step 3 — Render Backend & Worker (Unified Free Tier)
+## Step 3 — Render Backend & Worker (Manual No-Card Free Tier)
 
-To avoid paying for a dedicated Background Worker, the application runs both the FastAPI web server and the Celery background worker inside a single, unified free Render Web Service via a `start.sh` background script.
+To bypass Render's mandatory credit card capture for Blueprints, we will deploy this manually with a single unified free instance. Because our architecture securely embeds the Celery background worker inside a single Web Service via `start.sh`, this is entirely free!
 
 1. Go to [render.com](https://render.com)
-2. Click **New** → **Blueprint**
-3. Connect your GitHub repository.
-4. Render will automatically detect the `render.yaml` file in the `backend/` directory and propose creating **one** service:
-   - `merge-backend` (Web Service)
-5. Fill in the environment variables for the service using the prompt instructions in Render:
+2. Click **New** → **Web Service** *(Do not click Blueprint!)*
+3. Use the "Build and deploy from a Git repository" option and connect/paste your GitHub repository.
+4. Fill in the required parameters securely:
+   - **Name**: `merge-backend`
+   - **Language**: `Python`
+   - **Branch**: `main`
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -e '.[dev]'`
+   - **Start Command**: `bash start.sh`
+   - **Instance Type**: Select **Free**
+5. Expand **Advanced** and add the following Environment Variables precisely:
 
 ```
 DATABASE_URL=<your Neon URL — no sslmode params, app handles SSL>

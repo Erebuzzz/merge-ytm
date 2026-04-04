@@ -1,10 +1,21 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true,
+  /* config options here */
+  images: {
+    domains: ["lh3.googleusercontent.com"], 
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(
+  nextConfig,
+  {
+    org: "merge",
+    project: "merge-frontend",
+    silent: true, // Suppresses all logs
+    widenClientFileUpload: true,
+    hideSourceMaps: true,
+    disableLogger: true,
+  }
+);

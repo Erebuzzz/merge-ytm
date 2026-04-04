@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import sentry_sdk
 
 from app.api.routes import router
 from app.core.config import get_settings
@@ -10,6 +11,13 @@ from app.db.session import engine
 from app.models import Base
 
 settings = get_settings()
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+    )
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, debug=settings.debug)
 

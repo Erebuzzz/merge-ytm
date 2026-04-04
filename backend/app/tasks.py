@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import sentry_sdk
+
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -11,6 +14,22 @@ if settings.redis_url:
     from app.models import Blend, Job
     from app.schemas.api import BlendGenerateRequest, YTMusicPlaylistCreateRequest
     from app.services.blend_service import BlendService
+
+    celery_app.conf.update(
+        task_serializer="json",
+        accept_content=["json"],
+        result_serializer="json",
+        timezone="UTC",
+        enable_utc=True,
+        broker_connection_retry_on_startup=True,
+    )
+
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            traces_sample_rate=1.0,
+        )
 
     def _create_job(db, job_type: str, blend_id: str, owner_id: str | None, celery_task_id: str | None = None) -> Job:
         """Create a Job record with status=running, progress=0."""
