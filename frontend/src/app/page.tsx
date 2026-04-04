@@ -67,7 +67,7 @@ export default function HomePage() {
           </div>
 
           <div className="w-full max-w-sm glass-panel rounded-2xl p-6 hidden lg:block animate-slide-in-right border-t border-white/10 shadow-xl relative">
-            <img src="https://img.icons8.com/3d-fluency/180/headphones.png" alt="Headphones" className="absolute -top-12 -right-12 w-32 h-32 opacity-80 drop-shadow-2xl animate-float pointer-events-none" />
+            <img src="https://img.icons8.com/color/144/headphones.png" alt="Headphones" className="absolute -top-12 -right-12 w-32 h-32 opacity-80 drop-shadow-2xl animate-float pointer-events-none" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-4">
               Blend Composition
             </p>
@@ -75,7 +75,7 @@ export default function HomePage() {
               <div className="group rounded-xl bg-surface-highlight p-4 border border-transparent transition hover:border-brand-ytmusic/30 hover:bg-brand-ytmusic/5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-white flex items-center gap-2">
-                    <img className="w-4 h-4" src="https://img.icons8.com/3d-fluency/94/heart-suit.png" alt="" />
+                    <img className="w-4 h-4" src="https://img.icons8.com/color/96/like.png" alt="" />
                     Shared Taste
                   </p>
                   <span className="text-xs text-brand-ytgradient2 font-medium">100% Match</span>
@@ -99,7 +99,7 @@ export default function HomePage() {
               <div className="group rounded-xl bg-surface-highlight p-4 border border-transparent transition hover:border-brand-ytgradient1/30 hover:bg-brand-ytgradient1/5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-white flex items-center gap-2">
-                    <img className="w-4 h-4" src="https://img.icons8.com/3d-fluency/94/user-female-circle.png" alt="" />
+                    <img className="w-4 h-4" src="https://img.icons8.com/3d-fluency/94/user-female.png" alt="" />
                     From User B
                   </p>
                   <span className="text-xs text-text-muted">Vibe matched</span>
@@ -136,7 +136,7 @@ export default function HomePage() {
       <section className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden flex flex-col md:flex-row gap-8 items-center">
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-ytgradient1/10 rounded-full mix-blend-screen filter blur-[80px]"></div>
         <div className="hidden md:flex w-32 justify-center shrink-0 z-10">
-          <img src="https://img.icons8.com/3d-fluency/180/diamond.png" alt="Diamond" className="w-24 h-24 drop-shadow-xl animate-float-delayed" />
+          <img src="https://img.icons8.com/color/144/diamond.png" alt="Diamond" className="w-24 h-24 drop-shadow-xl animate-float-delayed" />
         </div>
         <div className="relative z-10 max-w-3xl">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-ytgradient2 mb-3">
@@ -148,7 +148,7 @@ export default function HomePage() {
           <div className="grid gap-6 text-sm leading-relaxed text-text-secondary md:grid-cols-2">
             <p>
               Merge is free to use and not affiliated with any streaming platform. It runs on open-source tooling
-              and is maintained by the community \u2014 no subscriptions, no lock-in.
+              and is maintained by the community — no subscriptions, no lock-in.
             </p>
             <p>
               Whether you contribute code, report issues, or just share your blends, you&apos;re part of what keeps
