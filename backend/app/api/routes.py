@@ -103,7 +103,11 @@ def youtube_oauth_callback(
     from sqlalchemy import select
     from app.models import Session as AuthSession, generate_uuid
 
-    frontend = settings.frontend_url.rstrip("/") if settings.frontend_url != "*" else "http://localhost:3000"
+    if settings.frontend_url == "*":
+        frontend = "http://localhost:3000"
+    else:
+        # Ensure we select the primary domain if a CSV string is provided
+        frontend = settings.frontend_url.split(",")[0].strip().rstrip("/")
 
     if error:
         return RedirectResponse(url=f"{frontend}/login?error={error}")
