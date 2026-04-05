@@ -27,10 +27,9 @@ app = FastAPI(title=settings.app_name, version=settings.app_version, debug=setti
 # CORS: allow the configured frontend and localhost during development.
 allowed_origins: list[str] = ["*"]
 if settings.frontend_url and settings.frontend_url != "*":
-    allowed_origins = [
-        settings.frontend_url,
-        "http://localhost:3000",
-    ]
+    # Split by comma if the user wants to securely allow multiple environments
+    allowed_origins = [url.strip() for url in settings.frontend_url.split(",")]
+    allowed_origins.append("http://localhost:3000")
 
 app.add_middleware(
     CORSMiddleware,
