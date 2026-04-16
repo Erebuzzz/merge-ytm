@@ -130,7 +130,41 @@ def youtube_oauth_callback(
         },
     )
     if not token_response.is_success:
-        return RedirectResponse(url=f"{frontend}/login?error=token_exchange_failed")
+        # Forward Google /token error details to the frontend so we can stop guessing.
+        # (Avoid including any secrets; error fields are safe.)
+        import logging
+        from urllib.parse import quote
+
+        logger = logging.getLogger(__name__)
+
+        oauth_error: str | None = None
+        oauth_error_description: str | None = None
+        try:
+            token_body = token_response.json()
+            oauth_error = token_body.get("error")
+            oauth_error_description = token_body.get("error_description")
+        except Exception:
+            # Some network/proxy failures won't return JSON.
+            oauth_error_description = token_response.text[:250] if token_response.text else None
+
+        # Keep URL reasonably small.
+        if oauth_error_description:
+            oauth_error_description = oauth_error_description[:200]
+
+        logger.warning(
+            "OAuth token exchange failed: status=%s error=%s description=%s",
+            token_response.status_code,
+            oauth_error,
+            oauth_error_description,
+        )
+
+        redirect_url = f"{frontend}/login?error=token_exchange_failed"
+        if oauth_error:
+            redirect_url += f"&oauth_error={quote(oauth_error, safe='')}"
+        if oauth_error_description:
+            redirect_url += f"&oauth_error_description={quote(oauth_error_description, safe='')}"
+
+        return RedirectResponse(url=redirect_url)
 
     token_data = token_response.json()
     id_token = token_data.get("id_token")

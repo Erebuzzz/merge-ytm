@@ -7,7 +7,7 @@ import { getYouTubeAuthUrl } from "@/lib/api";
 
 const OAUTH_ERRORS: Record<string, string> = {
   access_denied: "You cancelled the Google sign-in. Please try again.",
-  token_exchange_failed: "Google sign-in failed — the authorisation code expired. Please try again.",
+  token_exchange_failed: "Google sign-in failed. Please try again.",
   missing_id_token: "Google did not return identity info. Please try again.",
   invalid_id_token: "Google returned an invalid token. Please try again.",
   email_not_provided: "Your Google account did not share an email address. Please allow email access and try again.",
@@ -21,7 +21,19 @@ function RegisterContent() {
   useEffect(() => {
     const errorCode = searchParams.get("error");
     if (errorCode) {
-      setError(OAUTH_ERRORS[errorCode] ?? `Sign-in error: ${errorCode}`);
+      const oauthError = searchParams.get("oauth_error");
+      const oauthErrorDescription = searchParams.get("oauth_error_description");
+
+      let message = OAUTH_ERRORS[errorCode] ?? `Sign-in error: ${errorCode}`;
+      if (errorCode === "token_exchange_failed") {
+        const details: string[] = [];
+        if (oauthError) details.push(oauthError);
+        if (oauthErrorDescription) details.push(oauthErrorDescription);
+        const detailStr = details.length ? ` (${details.join(": ")})` : "";
+        message = `Google sign-in failed${detailStr}. Please try again.`;
+      }
+
+      setError(message);
       window.history.replaceState({}, "", "/register");
     }
   }, [searchParams]);
