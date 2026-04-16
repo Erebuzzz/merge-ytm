@@ -44,7 +44,7 @@ class Session(Base):
     __tablename__ = "session"
     __table_args__ = {"schema": "neon_auth"}
     
-    id: Mapped[str] = mapped_column(String, primary_key=True)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
     expiresAt: Mapped[datetime] = mapped_column(DateTime)
     token: Mapped[str] = mapped_column(String, unique=True)
     createdAt: Mapped[datetime] = mapped_column(DateTime)
@@ -57,7 +57,7 @@ class Account(Base):
     __tablename__ = "account"
     __table_args__ = {"schema": "neon_auth"}
     
-    id: Mapped[str] = mapped_column(String, primary_key=True)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
     accountId: Mapped[str] = mapped_column(String)
     providerId: Mapped[str] = mapped_column(String)
     userId: Mapped[str] = mapped_column(ForeignKey("neon_auth.user.id", ondelete="CASCADE"))
@@ -75,7 +75,7 @@ class Verification(Base):
     __tablename__ = "verification"
     __table_args__ = {"schema": "neon_auth"}
     
-    id: Mapped[str] = mapped_column(String, primary_key=True)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
     identifier: Mapped[str] = mapped_column(String)
     value: Mapped[str] = mapped_column(String)
     expiresAt: Mapped[datetime] = mapped_column(DateTime)
