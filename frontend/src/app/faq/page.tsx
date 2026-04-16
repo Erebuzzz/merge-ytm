@@ -12,15 +12,15 @@ export default function FAQPage() {
 
       <SectionCard eyebrow="Guide" title="How to Create a Blend">
         <div className="space-y-6 text-sm text-text-secondary leading-relaxed">
-          <p>Creating a blend takes less than a minute. Here are the steps:</p>
+          <p>Merge now supports two creation paths:</p>
           <div className="space-y-4">
             <div className="bg-surface-highlight/20 border border-white/5 rounded-2xl p-6">
-              <h3 className="font-bold text-white text-base mb-2">1. Paste Playlist Links</h3>
-              <p>Go to the <strong>Create Blend</strong> page. You and your friend each paste up to 5 YouTube Music playlist URLs. Merge extracts the tracks to understand your combined taste.</p>
+              <h3 className="font-bold text-white text-base mb-2">1. Paste Mode (Solo)</h3>
+              <p>Go to <strong>Create Blend</strong>. Add your own playlists (picker or pasted URLs), then paste your friend&apos;s public URLs. No login required for your friend in this mode.</p>
             </div>
             <div className="bg-surface-highlight/20 border border-white/5 rounded-2xl p-6">
-              <h3 className="font-bold text-white text-base mb-2">2. Upload Auth (Optional)</h3>
-              <p>To include your <em>Liked Songs</em> or to <em>export the final playlist</em> to your YouTube Music library, upload your <code>headers_auth.json</code> file on the <strong>Auth Upload</strong> page. Skip this step if you only want to use public playlists and preview the result in the browser.</p>
+              <h3 className="font-bold text-white text-base mb-2">2. Invite Mode (Collaborative)</h3>
+              <p>Go to <strong>Invite</strong>, generate a link, and send it. Your friend opens it on their own device, logs in, connects YouTube Music, then joins with their own playlists.</p>
             </div>
             <div className="bg-surface-highlight/20 border border-white/5 rounded-2xl p-6">
               <h3 className="font-bold text-white text-base mb-2">3. Generate & Export</h3>
@@ -64,22 +64,12 @@ export default function FAQPage() {
 
       <SectionCard eyebrow="Security" title="Privacy & Authentication">
         <div className="space-y-4 text-sm text-text-secondary leading-relaxed">
-          <h3 className="text-white font-bold text-base mt-2">Why do you need my headers_auth.json?</h3>
-          <p>
-            YouTube Music does not have a public API for creating playlists or reading private Liked Songs. The only way to automate these features is by providing the session cookies your browser uses to prove you are logged in.
-          </p>
-          <h3 className="text-white font-bold text-base mt-6">Is it safe?</h3>
+          <h3 className="text-white font-bold text-base mt-2">How does login work across domains?</h3>
           <p className="bg-brand-ytmusic/5 p-4 rounded-xl border border-brand-ytmusic/20">
-            <strong className="text-white">Yes.</strong> The moment you upload your <code>headers_auth.json</code>, the backend encrypts it with AES-128-CBC (Fernet) before it ever touches the database. The raw file is <em>never</em> logged or stored in plaintext. It is used only for the duration of the fetch or export operation.
+            Merge uses Google OAuth. After login, the backend redirects to the frontend with a short-lived session token in the URL. The frontend stores it locally and sends it to the API as <code>Authorization: Bearer</code> on each request.
           </p>
-          <h3 className="text-white font-bold text-base mt-6">How do I get headers_auth.json?</h3>
-          <ol className="list-decimal pl-5 space-y-2">
-            <li>Open <a href="https://music.youtube.com" target="_blank" rel="noreferrer" className="text-brand-ytmusic hover:underline">music.youtube.com</a> and log in.</li>
-            <li>Open DevTools (F12) → Network tab.</li>
-            <li>Filter by <code>browse</code> or <code>next</code> and click around the site to trigger a request.</li>
-            <li>Click the request → Request Headers → right-click → Copy object.</li>
-            <li>Paste into a text file and save as <code>headers_auth.json</code>.</li>
-          </ol>
+          <h3 className="text-white font-bold text-base mt-6">Do invite links expire?</h3>
+          <p>Yes. Invite links expire in 7 days and can only be joined once.</p>
         </div>
       </SectionCard>
 
@@ -99,11 +89,11 @@ export default function FAQPage() {
           </div>
           <div>
             <h3 className="text-white font-bold mb-1">My blend generation failed — what gives?</h3>
-            <p>Make sure the playlists you provided are set to <strong>Public</strong> or <strong>Unlisted</strong>. Private playlists cannot be read by the server unless you have uploaded your auth file and the playlist belongs to you.</p>
+            <p>Make sure pasted playlists are <strong>Public</strong> or <strong>Unlisted</strong>. In Invite Mode, both users should connect YouTube Music before joining if they want private library sources like liked songs.</p>
           </div>
           <div>
             <h3 className="text-white font-bold mb-1">Is Merge free?</h3>
-            <p>Yes. Merge is free, open-source, and community-driven. There are no subscriptions or lock-in. Check out the project on <a href="https://github.com/Erebuzzz/merge" target="_blank" rel="noreferrer" className="text-brand-ytmusic hover:underline">GitHub</a>.</p>
+            <p>Yes. Merge is free, open-source, and community-driven. There are no subscriptions or lock-in. Check out the project on <a href="https://github.com/Erebuzzz/merge-ytm" target="_blank" rel="noreferrer" className="text-brand-ytmusic hover:underline">GitHub</a>.</p>
           </div>
         </div>
       </SectionCard>

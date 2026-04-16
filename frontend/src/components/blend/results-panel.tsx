@@ -237,7 +237,7 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
                 <h4 className="font-bold text-white tracking-wide">Authentication Required</h4>
                 <p className="text-xs text-text-muted mt-1 max-w-[250px]">Connect YouTube Music to push this playlist to your library.</p>
               </div>
-              <Link href="/auth-upload" className="mt-4 px-6 py-3 rounded-full bg-brand-ytmusic text-black font-bold text-xs hover:scale-105 transition shadow-lg">
+              <Link href="/dashboard" className="mt-4 px-6 py-3 rounded-full bg-brand-ytmusic text-black font-bold text-xs hover:scale-105 transition shadow-lg">
                 Connect YouTube Music
               </Link>
             </div>

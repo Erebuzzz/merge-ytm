@@ -9,8 +9,8 @@ export default function CreateBlendPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">Blend Builder</p>
           <h2 className="text-3xl font-display font-bold mb-4">Create a new shared playlist</h2>
           <div className="grid gap-4 text-sm leading-relaxed text-text-secondary md:grid-cols-3 font-medium">
-            <p className="flex items-start gap-2"><span className="text-brand-ytgradient2">1.</span> Paste up to five playlist links per listener.</p>
-            <p className="flex items-start gap-2"><span className="text-brand-ytgradient2">2.</span> Attach auth only for liked songs import.</p>
+            <p className="flex items-start gap-2"><span className="text-brand-ytgradient2">1.</span> Connect YTM or paste up to five playlists.</p>
+            <p className="flex items-start gap-2"><span className="text-brand-ytgradient2">2.</span> Add your friend&apos;s public playlist URLs.</p>
             <p className="flex items-start gap-2"><span className="text-brand-ytgradient2">3.</span> Generate a compact playlist with a readable score.</p>
           </div>
         </div>

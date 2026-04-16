@@ -1,16 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+type LocalUser = { id: string; name: string; email: string };
+
+export function signOutMerge() {
+  localStorage.removeItem("merge_session_token");
+  localStorage.removeItem("merge_user");
+  window.location.href = "/login";
+}
 
 export function SidebarNav() {
-  const { data: session, isPending } = useSession();
   const router = useRouter();
+  const [user, setUser] = useState<LocalUser | null>(null);
+  const [ready, setReady] = useState(false);
 
-  async function handleLogout() {
-    await signOut();
-    router.push("/");
+  useEffect(() => {
+    const stored = localStorage.getItem("merge_user");
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch {
+        // corrupted
+      }
+    }
+    setReady(true);
+  }, []);
+
+  function handleLogout() {
+    signOutMerge();
+    setUser(null);
+    router.push("/login");
   }
 
   return (
@@ -22,16 +44,17 @@ export function SidebarNav() {
         Create Blend
       </Link>
       <Link href="/faq" className="px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary">
-        Docs & FAQ
+        Docs &amp; FAQ
       </Link>
 
       <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
-        {isPending ? (
+        {!ready ? (
           <div className="px-4 py-3 text-text-muted animate-pulse">Loading...</div>
-        ) : session ? (
+        ) : user ? (
           <>
-            <div className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-text-muted">
-              {session.user.name}
+            <div className="px-4 py-2 rounded-lg bg-surface-highlight/30 border border-white/5">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-muted">{user.name}</p>
+              <p className="text-[11px] text-text-muted/80 truncate">{user.email}</p>
             </div>
             <Link href="/dashboard" className="block px-4 py-3 rounded-lg transition hover:bg-surface-highlight hover:text-text-primary text-brand-spotify">
               Dashboard

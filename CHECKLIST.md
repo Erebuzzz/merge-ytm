@@ -38,7 +38,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
 ### Google OAuth for YouTube Music
 - [x] `GET /auth/youtube/url` — builds and returns Google OAuth URL with `state=user_id`
 - [x] `GET /auth/youtube/callback` — exchanges code for token, encrypts with Fernet, stores on `User`, sets `auth_method="oauth"`, redirects to `/dashboard?ytm_connected=1`
-- [x] `auth_method` column on `User` model (`"oauth"` | `"headers"` | `None`)
+- [x] `auth_method` column on `User` model (`"oauth"` | `None`)
 - [x] `GET /user/youtube-status` — returns `{ connected: bool, method }`
 - [x] `YTMusicService._build_client()` detects OAuth vs headers credentials, uses `OAuthCredentials` for auto token refresh
 - [x] `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `YOUTUBE_OAUTH_REDIRECT_URI` in `Settings`
@@ -46,28 +46,25 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
 
 ---
 
-## 🎵 2. YouTube Music Connection — Three-tier approach
+## 🎵 2. YouTube Music Connection — Two-tier approach
 
 | Tier | Method | What it unlocks |
 |---|---|---|
 | 1 (primary) | Google OAuth | Library playlists, liked songs, export |
-| 2 (fallback) | `headers_auth.json` upload | Same as OAuth but manual |
-| 3 (no auth) | Public playlist URLs only | Blend from public playlists, no export |
+| 2 (no auth) | Public playlist URLs only | Blend from public playlists, no export |
 
 ### Backend
 - [x] `GET /user/playlists` — calls `get_library_playlists(limit=50)`, returns `[{id, title, count, thumbnail}]`
 - [x] `GET /user/liked-songs/count` — returns count without fetching all tracks
 - [x] `YTMusicService.get_library_playlists()` method
 - [x] `YTMusicService.get_liked_songs_count()` method
-- [x] `POST /user/upload-auth` sets `auth_method="headers"` on user record
 - [x] `extract_playlist_id()` already handles bare playlist IDs — picker selections work as-is
 
 ### Frontend
-- [x] `ConnectYouTubeMusic` component — OAuth button (primary), legacy upload toggle (secondary), connected state badge with method label
+- [x] `ConnectYouTubeMusic` component — OAuth button, connected state badge
 - [x] `PlaylistPicker` component — library playlists + liked songs, max 5 selections, loading skeleton, error state
-- [x] Blend form integrates `ConnectYouTubeMusic` + `PlaylistPicker` per participant
+- [x] Blend form: Listener A gets `ConnectYouTubeMusic` + `PlaylistPicker`; Listener B gets URL paste fields only
 - [x] Manual URL input kept as fallback inside `<details>` (collapsed when connected)
-- [x] Legacy `headers_auth.json` upload kept but collapsed by default
 - [x] New API functions: `getYouTubeAuthUrl`, `getYouTubeStatus`, `getUserPlaylists`, `getLikedSongsCount`
 
 ---
@@ -94,7 +91,6 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
 - [x] Per-IP rate limit: 100 req/min via Redis
 - [x] Duplicate job prevention on `POST /blend/generate/async` — checks for active `running` job
 - [x] Idempotency on `POST /blend/generate` — returns existing result if `status=ready`
-- [x] Auth file size cap: 1 MB
 - [x] Playlist link cap: 5 per participant
 - [x] ✅ Blend creation rate limit — max 10 blends per user per hour (429 with Retry-After)
 
@@ -154,7 +150,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
 - [x] `auth_method` column on `User` model (will be created by `create_all` on fresh DB)
 - [x] `Job`, `TrackFeedback`, `BlendFeedback` models with proper indexes and constraints
 - [x] ✅ Composite indexes: `TrackFeedback(user_id, blend_id)` via `ix_track_feedback_user_blend`, `Job(blend_id, status)` via `ix_job_blend_status`
-- [ ] Document `SECRET_KEY` rotation impact — rotating it invalidates all stored encrypted auth files
+- [ ] Document `SECRET_KEY` rotation impact — rotating it invalidates all stored encrypted OAuth tokens
 
 ---
 
@@ -281,7 +277,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=198246023843-g5r679jicvavjgu5tgupvvia6aka4a62.apps.
   - [ ] `POST /blend/generate/async` — duplicate job prevention returns `already_running`
   - [ ] `POST /blend/generate` — idempotency when `status=ready`
   - [ ] `GET /blend/{id}` — 403 for non-participant
-- [ ] `YTMusicService` mock tests — OAuth path vs headers path, retry behavior
+- [ ] `YTMusicService` mock tests — OAuth path, retry behavior
 - [ ] Playwright integration: sign up → connect YTM → pick playlists → generate → view results → export
 
 ---

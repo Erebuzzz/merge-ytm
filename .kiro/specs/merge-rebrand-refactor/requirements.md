@@ -1,3 +1,5 @@
+> **SUPERSEDED** — This requirements doc was written for the initial rebrand. Auth upload (headers_auth.json) has been removed. Blend creation now uses Paste Mode + Invite Mode. See `README.md` for the current product spec.
+
 # Requirements Document
 
 ## Introduction

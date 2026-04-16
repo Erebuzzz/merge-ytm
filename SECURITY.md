@@ -1,6 +1,6 @@
 # Security
 
-Merge handles uploaded `headers_auth.json` files that contain YouTube Music session credentials. Treat all deployments as handling sensitive user data.
+Merge handles user sessions, OAuth tokens, and playlist metadata. Treat all deployments as handling sensitive user data.
 
 ## Reporting a vulnerability
 
@@ -14,22 +14,21 @@ Instead:
 
 You will receive a response within 72 hours.
 
-## Auth file handling
+## OAuth token handling
 
-Uploaded `headers_auth.json` files contain browser session cookies for YouTube Music. The backend:
+Google OAuth tokens are stored encrypted on the backend. Merge:
 
-1. Validates the file is valid JSON and under 1 MB before processing
-2. Encrypts the content with Fernet (AES-128-CBC) using a key derived from `SECRET_KEY`
-3. Stores only the encrypted ciphertext — plaintext is never written to the database
-4. Uses the credentials only for the duration of the active fetch or export operation
-5. Never logs raw uploaded payloads
-
-The frontend displays an explicit security warning before the file input is shown.
+1. Exchanges OAuth code server-side over TLS
+2. Encrypts auth payloads with Fernet (AES-128-CBC) using a key derived from `SECRET_KEY`
+3. Stores only encrypted ciphertext in `User.encrypted_auth`
+4. Never logs OAuth token payloads
+5. Uses session validation against `neon_auth.session` for every protected API route
 
 ## Authentication and authorization
 
 - All API routes except `GET /` and `GET /health` require a valid session token
 - Tokens are validated against `neon_auth.session` and checked for expiry
+- Frontend sends session token through `Authorization: Bearer <token>`
 - Missing or expired tokens return `401 Unauthorized`
 - Blend and playlist-source routes enforce ownership — users cannot read or modify another user's data (returns `403` or `404`)
 
@@ -46,10 +45,10 @@ In production (`FRONTEND_URL` is set to a specific domain), CORS is restricted t
 
 ## Secrets handling
 
-- Never commit real auth headers, cookies, or tokens to the repository
+- Never commit real OAuth tokens, cookies, or session tokens to the repository
 - Never paste production secrets into issues or pull requests
 - Store all secrets in platform environment variables only
-- `SECRET_KEY` is used to derive the Fernet encryption key — rotating it invalidates all stored encrypted auth files
+- `SECRET_KEY` is used to derive the Fernet encryption key — rotating it invalidates all stored encrypted auth payloads
 - `NEON_AUTH_COOKIE_SECRET` is independent of `SECRET_KEY` and affects frontend auth cookies
 
 ## Deployment hygiene
@@ -59,9 +58,10 @@ In production (`FRONTEND_URL` is set to a specific domain), CORS is restricted t
 - Verify Neon Auth trusted origins include all active frontend origins (local, production, preview)
 - Remove unused preview deployments that were configured with sensitive values
 
-## Scope — areas requiring extra care
+## Scope - areas requiring extra care
 
-- Auth file upload and encryption (`/user/upload-auth`, `core/security.py`)
+- OAuth callback and token encryption (`/auth/youtube/callback`, `core/security.py`)
+- Invite link lifecycle (`/invite/*`, `blend_invites` table)
 - Playlist export routes (`/ytmusic/create-playlist`)
 - Session validation (`core/auth_middleware.py`)
 - Celery task payloads (avoid logging sensitive fields)

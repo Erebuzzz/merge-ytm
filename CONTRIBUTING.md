@@ -89,4 +89,9 @@ When adding a route:
 
 ## Database changes
 
-The app currently uses `Base.metadata.create_all()` on startup. Until Alembic migrations are added, new models just need to be imported in `models.py` and they will be created automatically. Document any new tables in the schema diagram in `design.md`.
+The app uses Alembic for schema migrations. To add a new model:
+
+1. Define it in `backend/app/models.py`
+2. Run `alembic revision --autogenerate -m "description"` to generate a migration
+3. Run `alembic upgrade head` to apply it locally
+4. Commit the generated migration file in `backend/alembic/versions/`

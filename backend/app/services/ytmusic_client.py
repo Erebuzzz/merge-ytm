@@ -56,7 +56,7 @@ class YTMusicService:
                 )
                 return YTMusic(temp_path, oauth_credentials=oauth_creds), temp_path
             else:
-                # Legacy headers_auth.json path
+                # Non-OAuth credentials fallback
                 return YTMusic(temp_path), temp_path
 
         return YTMusic(), None

@@ -2,7 +2,7 @@
 
 import { useSession } from "@/lib/auth/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { SectionCard } from "@/components/ui/section-card";
 import { ConnectYouTubeMusic } from "@/components/auth/connect-youtube-music";
 import Link from "next/link";
@@ -14,6 +14,10 @@ type BlendSummary = {
   participant_b_name: string;
   compatibility_score: number;
   created_at: string;
+};
+
+type LocalSession = {
+  user: { id: string; name: string; email: string };
 };
 
 // Isolated component so useSearchParams is inside Suspense
@@ -62,37 +66,99 @@ function YtmConnectedToast() {
   );
 }
 
-export default function DashboardPage() {
-  const { data: session, isPending } = useSession();
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const { data: neonSession, isPending: neonPending } = useSession();
   const router = useRouter();
   const [blends, setBlends] = useState<BlendSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<LocalSession | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
 
+  // Step 1: Capture token from redirect URL or restore from localStorage
   useEffect(() => {
-    if (!isPending && !session) {
+    const urlToken = searchParams.get("session_token");
+    const urlUserId = searchParams.get("user_id");
+    const urlName = searchParams.get("user_name");
+    const urlEmail = searchParams.get("user_email");
+
+    if (urlToken && urlUserId) {
+      // Fresh login — store token and user info
+      localStorage.setItem("merge_session_token", urlToken);
+      localStorage.setItem("merge_user", JSON.stringify({
+        id: urlUserId,
+        name: urlName || urlEmail?.split("@")[0] || "User",
+        email: urlEmail || "",
+      }));
+      setSession({
+        user: {
+          id: urlUserId,
+          name: urlName || urlEmail?.split("@")[0] || "User",
+          email: urlEmail || "",
+        },
+      });
+      // Clean URL
+      window.history.replaceState({}, "", "/dashboard");
+      setSessionReady(true);
+      return;
+    }
+
+    // Try restoring from localStorage
+    const storedToken = localStorage.getItem("merge_session_token");
+    const storedUser = localStorage.getItem("merge_user");
+    if (storedToken && storedUser) {
+      try {
+        setSession({ user: JSON.parse(storedUser) });
+        setSessionReady(true);
+        return;
+      } catch {
+        // corrupted — fall through
+      }
+    }
+
+    // Fall back to Neon Auth session
+    if (!neonPending) {
+      if (neonSession?.user) {
+        setSession({ user: neonSession.user as LocalSession["user"] });
+        setSessionReady(true);
+      } else {
+        setSessionReady(true); // no session found — will redirect
+      }
+    }
+  }, [searchParams, neonPending, neonSession]);
+
+  // Step 2: Redirect if not authenticated
+  useEffect(() => {
+    if (sessionReady && !session) {
       router.push("/login");
     }
-  }, [isPending, session, router]);
+  }, [sessionReady, session, router]);
+
+  // Step 3: Fetch blends
+  const fetchBlends = useCallback(async (userId: string) => {
+    try {
+      const token = localStorage.getItem("merge_session_token");
+      const res = await fetch(`${API_BASE_URL}/blends/mine?user_id=${userId}`, {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setBlends(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (session?.user.id) {
-      fetch(`${API_BASE_URL}/blends/mine?user_id=${session.user.id}`, { credentials: "include" })
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch");
-          return res.json();
-        })
-        .then((data) => {
-          setBlends(data);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error(err);
-          setLoading(false);
-        });
+      fetchBlends(session.user.id);
     }
-  }, [session?.user.id]);
+  }, [session?.user.id, fetchBlends]);
 
-  if (isPending || !session) {
+  if (!sessionReady || !session) {
     return <div className="flex h-[50vh] items-center justify-center animate-pulse text-brand-ytmusic">Loading Dashboard...</div>;
   }
 
@@ -154,13 +220,18 @@ export default function DashboardPage() {
 
         <div className="space-y-6">
           <SectionCard eyebrow="YouTube Music" title="Connection">
-            <ConnectYouTubeMusic
-              showLegacyOption
-              onLegacyUploadClick={() => router.push("/auth-upload")}
-            />
+            <ConnectYouTubeMusic />
           </SectionCard>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex h-[50vh] items-center justify-center animate-pulse text-brand-ytmusic">Loading Dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

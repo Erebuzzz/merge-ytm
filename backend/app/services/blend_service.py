@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import uuid
+import secrets
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import decrypt_auth_payload, encrypt_auth_payload
-from app.models import Blend, PlaylistSource, User
+from app.models import Blend, BlendInvite, PlaylistSource, User
 from app.schemas.api import (
     BlendCreateRequest,
     BlendCreateResponse,
@@ -87,13 +88,6 @@ class BlendService:
             })
         return result
 
-    def save_auth_file(self, user_id: str, payload: dict[str, Any]) -> dict[str, str]:
-        user = self._get_user(user_id)
-        user.encrypted_auth = encrypt_auth_payload(payload)
-        user.auth_uploaded_at = datetime.now(timezone.utc)
-        self.db.commit()
-        return {"userId": user.id, "status": "stored"}
-
     def fetch_sources(self, blend_id: str) -> PlaylistFetchResponse:
         blend = self._get_blend(blend_id)
         participants = self._participants_for_blend(blend)
@@ -111,7 +105,7 @@ class BlendService:
                     tracks = client.get_playlist_tracks(source.source_value)
                 else:
                     if not auth_headers:
-                        raise ValueError("Upload headers_auth.json to import liked songs for this user.")
+                        raise ValueError("Connect YouTube Music via OAuth to import liked songs for this user.")
                     tracks = client.get_liked_tracks()
 
                 deduplicated = deduplicate_tracks(tracks)
@@ -221,7 +215,7 @@ class BlendService:
         blend = self._get_blend(payload.blend_id)
         user = self._get_user(payload.user_id)
         if not user.encrypted_auth:
-            raise ValueError("Upload headers_auth.json before exporting a playlist.")
+            raise ValueError("Connect YouTube Music via OAuth before exporting a playlist.")
 
         tracks = self._flatten_blend_tracks(blend)
         service = YTMusicService(auth_headers=decrypt_auth_payload(user.encrypted_auth))
@@ -338,3 +332,69 @@ class BlendService:
     def _participant_has_source(participant: ParticipantSourceInput) -> bool:
         has_links = any(link.strip() for link in participant.playlist_links)
         return has_links or participant.include_liked_songs
+
+    def join_invite(
+        self, invite: "BlendInvite", joiner_id: str, joiner_name: str, joiner_playlist_urls: list[str], joiner_include_liked: bool
+    ) -> dict[str, str]:
+        # Validate that joiner actually provided something
+        has_links = any(url.strip() for url in joiner_playlist_urls)
+        if not (has_links or joiner_include_liked):
+            raise ValueError("You must provide at least one playlist link or import liked songs.")
+
+        # Both users are real authenticated users
+        creator_id = invite.creator_id
+
+        # 1. Create the Blend record
+        blend = Blend(participant_a_id=creator_id, participant_b_id=joiner_id, status="pending")
+        self.db.add(blend)
+
+        # 2. Add creator sources
+        for url in invite.creator_playlist_urls:
+            if url.strip():
+                self.db.add(PlaylistSource(user_id=creator_id, source_type="playlist", source_value=url.strip()))
+        if invite.creator_include_liked:
+            self.db.add(PlaylistSource(user_id=creator_id, source_type="liked_songs", source_value="liked_songs"))
+
+        # 3. Add joiner sources
+        for url in joiner_playlist_urls:
+            if url.strip():
+                self.db.add(PlaylistSource(user_id=joiner_id, source_type="playlist", source_value=url.strip()))
+        if joiner_include_liked:
+            self.db.add(PlaylistSource(user_id=joiner_id, source_type="liked_songs", source_value="liked_songs"))
+
+        # 4. Mark invite as accepted
+        invite.status = "accepted"
+        invite.joiner_id = joiner_id
+        invite.blend_id = blend.id
+
+        self.db.commit()
+
+        # Trigger async fetch if celery is available, otherwise user will poll and we gracefully fallback
+        from app.tasks import fetch_playlist_sources_task
+        fetch_playlist_sources_task.delay(blend.id, sync=True)
+
+        return {"blendId": blend.id}
+
+    def create_invite(
+        self,
+        creator_id: str,
+        creator_name: str,
+        playlist_urls: list[str],
+        include_liked_songs: bool,
+    ) -> BlendInvite:
+        cleaned_urls = [url.strip() for url in playlist_urls if url.strip()][:5]
+        if not cleaned_urls and not include_liked_songs:
+            raise ValueError("Select at least one playlist URL or include liked songs.")
+
+        invite = BlendInvite(
+            code=secrets.token_urlsafe(8)[:12],
+            creator_id=creator_id,
+            creator_name=creator_name or "Listener A",
+            creator_playlist_urls=cleaned_urls,
+            creator_include_liked=include_liked_songs,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        self.db.add(invite)
+        self.db.commit()
+        self.db.refresh(invite)
+        return invite

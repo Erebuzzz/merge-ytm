@@ -35,7 +35,7 @@ class User(Base):
 
     encrypted_auth: Mapped[str | None] = mapped_column(Text, nullable=True)
     auth_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # "oauth" | "headers" | None — tracks how the user connected YouTube Music
+    # "oauth" | None — tracks how the user connected YouTube Music
     auth_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     playlist_sources: Mapped[list["PlaylistSource"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -113,6 +113,27 @@ class Blend(TimestampMixin, Base):
 
     participant_a: Mapped["User"] = relationship(foreign_keys=[participant_a_id])
     participant_b: Mapped["User"] = relationship(foreign_keys=[participant_b_id])
+
+
+class BlendInvite(TimestampMixin, Base):
+    __tablename__ = "blend_invites"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    creator_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id", ondelete="CASCADE"), index=True)
+    creator_name: Mapped[str] = mapped_column(String(80))
+    # Creator's selected sources
+    creator_playlist_urls: Mapped[list[str]] = mapped_column(JSON, default=list)
+    creator_include_liked: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Status: pending | accepted | expired
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    # Populated when B joins
+    blend_id: Mapped[str | None] = mapped_column(ForeignKey("blends.id"), nullable=True)
+    joiner_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("neon_auth.user.id"), nullable=True)
+    # Expires 7 days after creation
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    creator: Mapped["User"] = relationship(foreign_keys=[creator_id])
 
 
 class Job(TimestampMixin, Base):

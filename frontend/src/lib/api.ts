@@ -20,12 +20,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("merge_session_token") : null;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     cache: "no-store",
     credentials: "include",
     ...init,
     headers: {
       ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
@@ -104,20 +106,6 @@ export async function getJobStatus(jobId: string): Promise<{
 }
 
 // ---------------------------------------------------------------------------
-// Auth upload (legacy / advanced)
-// ---------------------------------------------------------------------------
-
-export async function uploadAuth(userId: string, file: File): Promise<{ userId: string; status: string }> {
-  const formData = new FormData();
-  formData.append("user_id", userId);
-  formData.append("headers_file", file);
-  return request<{ userId: string; status: string }>("/user/upload-auth", {
-    method: "POST",
-    body: formData,
-  });
-}
-
-// ---------------------------------------------------------------------------
 // YouTube Music OAuth
 // ---------------------------------------------------------------------------
 
@@ -125,7 +113,7 @@ export async function getYouTubeAuthUrl(): Promise<{ url: string }> {
   return request<{ url: string }>("/auth/youtube/url");
 }
 
-export async function getYouTubeStatus(): Promise<{ connected: boolean; method: "oauth" | "headers" | null }> {
+export async function getYouTubeStatus(): Promise<{ connected: boolean; method: "oauth" | null }> {
   return request("/user/youtube-status");
 }
 
@@ -183,6 +171,32 @@ export async function submitBlendFeedback(payload: {
       blend_id: payload.blendId,
       rating: payload.rating,
       quick_option: payload.quickOption,
+    }),
+  });
+}
+
+// --- Invite Flow ---
+
+export async function createInvite(payload: { playlistUrls: string[], includeLikedSongs: boolean }) {
+  return request<{ code: string; expiresAt: string; shareUrl: string }>("/invite/create", {
+    method: "POST",
+    body: JSON.stringify({
+      playlist_urls: payload.playlistUrls,
+      include_liked_songs: payload.includeLikedSongs,
+    }),
+  });
+}
+
+export async function getInvite(code: string) {
+  return request<{ creatorName: string; status: string; blendId: string | null }>(`/invite/${code}`);
+}
+
+export async function joinInvite(code: string, payload: { playlistUrls: string[], includeLikedSongs: boolean }) {
+  return request<{ blendId: string }>(`/invite/${code}/join`, {
+    method: "POST",
+    body: JSON.stringify({
+      playlist_urls: payload.playlistUrls,
+      include_liked_songs: payload.includeLikedSongs,
     }),
   });
 }

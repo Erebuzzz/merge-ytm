@@ -15,7 +15,7 @@ This refactor delivered the full rebrand from "YTMusic Sync" to "Merge" plus a s
 - Feedback system — `TrackFeedback` and `BlendFeedback` models, `FeedbackService`, and `/feedback/track` + `/feedback/blend` routes
 - Async job tracking — `Job` model, Celery tasks write status/progress, `GET /job/{job_id}` polling endpoint
 - Ownership checks — blend and playlist-source routes enforce participant membership
-- Security hardening — auth file size validation (1 MB cap), CORS restricted to `FRONTEND_URL` in production
+- Security hardening — CORS restricted to `FRONTEND_URL` in production, Bearer token auth
 - Normalization improvements — NFKD unicode normalization, skip tracks missing `videoId` or `artist`
 - Blend engine updates — Dice coefficient compatibility score, frequency weighting, feedback boosts
 - Frontend feedback UI — inline track controls (👍 👎 ⏭), blend rating widget, Zustand feedback state
@@ -62,14 +62,13 @@ Frontend (Next.js + Zustand)
 - `Base.metadata.create_all()` is still used on startup — replace with Alembic migrations before any production data is at risk
 - The Celery worker is not deployed on Vercel — async job tracking only works if a separate worker process is running. The sync path still works without it
 - `ytmusicapi` is unofficial and can break on YouTube Music API changes — the retry layer helps but real telemetry around failure rates should be added
-- **Rotate the Google client secret** — it was exposed in chat. Go to [console.cloud.google.com/apis/credentials?project=merge-ytmusic](https://console.cloud.google.com/apis/credentials?project=merge-ytmusic) → Reset Secret
 
 **Medium priority:**
 
 - No end-to-end tests yet — the property tests cover logic but not the full HTTP request/response cycle
 - Feedback boosts in the blend engine use hardcoded deltas (+10 like, -10 dislike, -5 skip) — these should be tunable via config
 - The `GET /blends/mine` route still accepts a `user_id` query param alongside `current_user` — the param is now validated to match the authenticated user, but the route signature could be simplified to just use `current_user.id`
-- Auth file encryption uses a key derived from `SECRET_KEY` via SHA-256 — rotating `SECRET_KEY` invalidates all stored encrypted auth files with no migration path
+- OAuth token encryption uses a key derived from `SECRET_KEY` via SHA-256 — rotating `SECRET_KEY` invalidates all stored encrypted tokens with no migration path
 
 **Low priority:**
 
@@ -80,18 +79,16 @@ Frontend (Next.js + Zustand)
 ## Security posture
 
 **In place:**
-- Session token validation on all protected routes
+- Session token validation on all protected routes (Bearer token via `Authorization` header)
 - Ownership checks on blend/playlist-source routes
-- Auth file encryption (Fernet/AES-128-CBC)
-- File size validation (1 MB cap)
+- OAuth token encryption (Fernet/AES-128-CBC) before storage
 - CORS restricted to `FRONTEND_URL` in production
 - Rate limiting (60/user/min, 100/IP/min)
+- Cross-domain auth via URL token exchange (not cookies)
 
 **Still missing:**
 - Audit logging for export actions
-- Secret rotation strategy for `SECRET_KEY` (requires re-encrypting all stored auth files)
-- Content validation on auth file upload beyond JSON parsing and size check
-- CSRF protection (currently relies on CORS + SameSite cookies)
+- Secret rotation strategy for `SECRET_KEY` (requires re-encrypting all stored OAuth tokens)
 
 ## Test coverage
 

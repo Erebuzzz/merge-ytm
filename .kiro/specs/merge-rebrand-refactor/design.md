@@ -1,3 +1,5 @@
+> **SUPERSEDED** — This design doc was written for the initial rebrand. The auth architecture has since changed: `headers_auth.json` upload was removed in favor of Google OAuth only, cross-domain cookies were replaced with Bearer token auth via localStorage, and blend creation now supports Paste Mode + Invite Mode. See `README.md` for the current architecture.
+
 # Design Document — Merge Rebrand & Refactor
 
 ## Overview

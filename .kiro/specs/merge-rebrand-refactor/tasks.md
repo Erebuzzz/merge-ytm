@@ -1,3 +1,5 @@
+> **SUPERSEDED** — This task list was written for the initial rebrand. Auth upload tasks and related frontend components have been removed from the product. See `README.md` and `CHECKLIST.md` for the current state.
+
 # Implementation Plan: Merge Rebrand & Refactor
 
 ## Overview

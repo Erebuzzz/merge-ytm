@@ -3,17 +3,19 @@ from __future__ import annotations
 import json
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.auth_middleware import get_current_user
 from app.core.config import get_settings
-from app.core.security import decrypt_auth_payload, encrypt_auth_payload, validate_auth_file_size
+from app.core.security import decrypt_auth_payload, encrypt_auth_payload
 from app.db.session import get_db
-from app.models import Blend, Job, User
+from app.models import Blend, BlendInvite, Job, User
 from app.schemas.api import (
     BlendCreateRequest,
     BlendCreateResponse,
@@ -99,8 +101,6 @@ def youtube_oauth_callback(
     """Exchange OAuth code for token, decode id_token, login user cleanly via DB mapping."""
     import httpx
     import base64
-    from datetime import timedelta
-    from sqlalchemy import select
     from app.models import Session as AuthSession, generate_uuid
 
     if settings.frontend_url == "*":
@@ -177,17 +177,10 @@ def youtube_oauth_callback(
     db.add(auth_session)
     db.commit()
 
-    response = RedirectResponse(url=f"{frontend}/dashboard")
-    response.set_cookie(
-        key="better-auth.session_token",
-        value=session_token,
-        max_age=30 * 24 * 60 * 60,
-        path="/",
-        secure=not frontend.startswith("http://localhost"),
-        httponly=True,
-        samesite="lax",
-    )
-    return response
+    # Pass token via URL so frontend can store it in localStorage.
+    # Cross-domain cookies (Render→Vercel) are blocked by SameSite policy.
+    redirect_url = f"{frontend}/dashboard?session_token={session_token}&user_id={user.id}&user_name={user.name or ''}&user_email={user.email}"
+    return RedirectResponse(url=redirect_url)
 
 
 @router.get("/user/youtube-status")
@@ -197,7 +190,7 @@ def get_youtube_status(
     """Return whether the user has connected YouTube Music and via which method."""
     return {
         "connected": current_user.encrypted_auth is not None,
-        "method": current_user.auth_method,  # "oauth" | "headers" | None
+        "method": current_user.auth_method,  # "oauth" | None
     }
 
 
@@ -210,7 +203,7 @@ def get_user_playlists(
     if not current_user.encrypted_auth:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Connect YouTube Music first — use OAuth or upload headers_auth.json.",
+            detail="Connect YouTube Music first via Google OAuth.",
         )
     auth = decrypt_auth_payload(current_user.encrypted_auth)
     client = YTMusicService(auth_headers=auth)
@@ -248,11 +241,10 @@ def create_blend(
     current_user: User = Depends(get_current_user),
 ) -> BlendCreateResponse:
     # Rate limit: max 10 blends per user per hour
-    from sqlalchemy import select as sa_select, func
-    from datetime import timedelta
+    from sqlalchemy import func
     one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
     recent_count = db.scalar(
-        sa_select(func.count()).select_from(Blend).where(
+        select(func.count()).select_from(Blend).where(
             (Blend.participant_a_id == current_user.id) | (Blend.participant_b_id == current_user.id),
             Blend.created_at >= one_hour_ago,
         )
@@ -269,36 +261,7 @@ def create_blend(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.post("/user/upload-auth", status_code=status.HTTP_201_CREATED)
-async def upload_auth_file(
-    user_id: str = Form(...),
-    headers_file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict[str, str]:
-    if not headers_file.filename or not headers_file.filename.lower().endswith(".json"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Upload a JSON auth file.")
-
-    raw_bytes = await headers_file.read()
-    try:
-        validate_auth_file_size(len(raw_bytes))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    try:
-        payload = json.loads(raw_bytes.decode("utf-8"))
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The uploaded file is not valid JSON.") from exc
-
-    try:
-        result = _service(db).save_auth_file(user_id=user_id, payload=payload)
-        # Mark auth method as "headers" for legacy upload
-        user = db.get(User, user_id)
-        if user:
-            user.auth_method = "headers"
-            db.commit()
-        return result
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+# Google OAuth is the only auth method.
 
 
 @router.get("/blends/mine")
@@ -373,9 +336,8 @@ def generate_blend_async(
     _check_blend_ownership(payload.blend_id, current_user, db)
 
     # Duplicate job prevention: check for active running job
-    from sqlalchemy import select as sa_select
     active_job = db.scalars(
-        sa_select(Job).where(
+        select(Job).where(
             Job.blend_id == payload.blend_id,
             Job.job_type == "generate",
             Job.status == "running",
@@ -456,3 +418,93 @@ def submit_blend_feedback(
         quick_option=payload.quick_option,
     )
     return {"status": "recorded"}
+
+
+# --- Invite Flow ---
+
+class InviteCreateRequest(BaseModel):
+    playlist_urls: list[str] = Field(default_factory=list)
+    include_liked_songs: bool = False
+
+class InviteJoinRequest(BaseModel):
+    playlist_urls: list[str] = Field(default_factory=list)
+    include_liked_songs: bool = False
+
+@router.post("/invite/create", status_code=status.HTTP_201_CREATED)
+def create_invite(
+    payload: InviteCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        invite = _service(db).create_invite(
+            creator_id=current_user.id,
+            creator_name=current_user.name,
+            playlist_urls=payload.playlist_urls,
+            include_liked_songs=payload.include_liked_songs,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    frontend = settings.frontend_url.split(",")[0].strip().rstrip("/") if settings.frontend_url != "*" else "http://localhost:3000"
+    return {
+        "code": invite.code,
+        "expiresAt": invite.expires_at,
+        "shareUrl": f"{frontend}/invite/{invite.code}",
+    }
+
+
+@router.get("/invite/{code}")
+def get_invite(
+    code: str,
+    db: Session = Depends(get_db),
+):
+    invite = db.scalars(
+        select(BlendInvite).where(BlendInvite.code == code)
+    ).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found or expired")
+    
+    if invite.expires_at < datetime.now(timezone.utc):
+        invite.status = "expired"
+        db.commit()
+        raise HTTPException(status_code=400, detail="This invite has expired")
+
+    return {
+        "creatorName": invite.creator_name,
+        "status": invite.status,
+        "blendId": invite.blend_id,
+    }
+
+
+@router.post("/invite/{code}/join")
+def join_invite(
+    code: str,
+    payload: InviteJoinRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    invite = db.scalars(
+        select(BlendInvite).where(BlendInvite.code == code)
+    ).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+        
+    if invite.expires_at < datetime.now(timezone.utc) or invite.status != "pending":
+        raise HTTPException(status_code=400, detail="Invite is no longer valid")
+
+    if invite.creator_id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot join your own invite")
+
+    # Delegate to service to create the blend
+    try:
+        result = _service(db).join_invite(
+            invite,
+            current_user.id,
+            current_user.name,
+            payload.playlist_urls,
+            payload.include_liked_songs,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return result
