@@ -21,7 +21,9 @@ import { PlaylistPicker } from "@/components/blend/playlist-picker";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const YTM_URL_PATTERN = /^(https:\/\/music\.youtube\.com\/(playlist\?list=|watch\?.*list=)[A-Za-z0-9_\-]+|[A-Za-z0-9_\-]{10,})$/;
+// Accept playlist/watch links with additional query params (e.g. &si=...).
+const YTM_URL_PATTERN =
+  /^(https:\/\/music\.youtube\.com\/(playlist\?list=|watch\?.*list=)[A-Za-z0-9_\-]+(?:&[^\s]+)*|[A-Za-z0-9_\-]{10,})$/;
 
 function validateYTMUrl(url: string): string | null {
   if (!url.trim()) return null;
