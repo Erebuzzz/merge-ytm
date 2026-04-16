@@ -185,19 +185,19 @@ export function BlendForm() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      {/* Mode Switcher */}
-      <div className="flex border-b border-surface-border mb-8">
-        <div className="px-6 py-3 border-b-2 border-brand-ytmusic text-white font-bold text-sm">
+    <div className="space-y-6 md:space-y-8 animate-fade-in-up">
+      {/* Pill tab switcher */}
+      <div className="flex gap-1 p-1 rounded-xl bg-surface-highlight/50 w-fit">
+        <div className="px-4 py-2 rounded-lg bg-surface-elevated text-white font-bold text-xs shadow-sm">
           Paste Playlists
         </div>
-        <Link href="/invite" className="px-6 py-3 text-text-muted hover:text-white transition font-medium text-sm">
-          Send Invite Link
+        <Link href="/invite" className="px-4 py-2 rounded-lg text-text-muted hover:text-white transition font-medium text-xs">
+          Invite Link
         </Link>
       </div>
 
-      <form className="space-y-8" onSubmit={handleSubmit}>
-        <div className="grid gap-8 xl:grid-cols-2">
+      <form className="space-y-6 md:space-y-8" onSubmit={handleSubmit}>
+        <div className="grid gap-6 md:gap-8 xl:grid-cols-2">
           
           {/* USER A: The Logged In User */}
           <SectionCard eyebrow="Your Music" title="Listener A">
@@ -209,7 +209,7 @@ export function BlendForm() {
                   onChange={(e) => setParticipantName("userA", e.target.value)}
                   placeholder="Your Name"
                   readOnly={!!localUser}
-                  className={`w-full rounded-xl border border-white/10 px-4 py-3 text-sm text-white focus:outline-none ${localUser ? 'bg-surface-elevated/50 text-white/50 cursor-not-allowed' : 'bg-surface-highlight/50 focus:border-brand-ytmusic'}`}
+                  className={`w-full rounded-xl border border-white/10 px-4 py-3 md:py-3 text-sm text-white focus:outline-none touch-target ${localUser ? 'bg-surface-elevated/50 text-white/50 cursor-not-allowed' : 'bg-surface-highlight/50 focus:border-brand-ytmusic'}`}
                 />
               </label>
 
@@ -365,10 +365,10 @@ export function BlendForm() {
         </div>
 
         {/* Submit area */}
-        <div className="flex flex-col gap-6 rounded-3xl bg-surface-highlight/20 border border-white/5 p-8 md:flex-row md:items-center md:justify-between shadow-xl relative overflow-hidden">
+        <div className="flex flex-col gap-5 rounded-2xl md:rounded-3xl glass-surface p-5 md:p-8 md:flex-row md:items-center md:justify-between relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-ytmusic/5 to-brand-ytgradient1/5 pointer-events-none" />
 
-          <div className="relative z-10 max-w-xl">
+          <div className="relative z-10 max-w-xl hidden md:block">
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-4">How it works</p>
             <div className="flex flex-col sm:flex-row gap-6 text-sm">
               {[
@@ -387,7 +387,7 @@ export function BlendForm() {
             </div>
           </div>
 
-          <div className="min-w-[17rem] relative z-10 space-y-3">
+          <div className="w-full md:min-w-[17rem] md:w-auto relative z-10 space-y-3">
             <button
               type="submit"
               disabled={isSubmitting || !canSubmit}

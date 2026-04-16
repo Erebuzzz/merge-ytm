@@ -20,25 +20,21 @@ type LocalSession = {
   user: { id: string; name: string; email: string };
 };
 
-// Isolated component so useSearchParams is inside Suspense
 function YtmConnectedToast() {
   const searchParams = useSearchParams();
   const [show, setShow] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const ytmConnected = searchParams.get("ytm_connected");
-    const error = searchParams.get("error");
-
-    if (ytmConnected === "1") {
+    if (searchParams.get("ytm_connected") === "1") {
       setShow(true);
       setTimeout(() => setShow(false), 4000);
       window.history.replaceState({}, "", "/dashboard");
     }
-
+    const error = searchParams.get("error");
     if (error) {
       const messages: Record<string, string> = {
-        invalid_code: "Google OAuth failed — the authorization code was invalid or expired. Please try connecting again.",
+        invalid_code: "Google OAuth failed — the authorization code was invalid or expired.",
         access_denied: "Google sign-in was cancelled.",
       };
       setErrorMsg(messages[error] ?? `OAuth error: ${error}`);
@@ -48,20 +44,18 @@ function YtmConnectedToast() {
 
   if (errorMsg) {
     return (
-      <div className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-brand-ytred/30 bg-brand-ytred/10 px-5 py-3 shadow-xl animate-fade-in-up max-w-sm">
-        <span className="text-brand-ytred text-lg flex-shrink-0">⚠️</span>
-        <p className="text-sm font-medium text-white">{errorMsg}</p>
-        <button type="button" onClick={() => setErrorMsg(null)} className="text-text-muted hover:text-white ml-2 flex-shrink-0">✕</button>
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-3 rounded-xl border border-brand-ytred/30 bg-brand-ytred/10 glass-elevated px-4 py-3 shadow-xl animate-fade-in-up max-w-[90vw] sm:max-w-sm">
+        <p className="text-xs font-medium text-white flex-1">{errorMsg}</p>
+        <button type="button" onClick={() => setErrorMsg(null)} className="text-text-muted hover:text-white shrink-0">x</button>
       </div>
     );
   }
 
   if (!show) return null;
-
   return (
-    <div className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-brand-ytmusic/30 bg-brand-ytmusic/10 px-5 py-3 shadow-xl animate-fade-in-up">
-      <span className="text-brand-ytmusic text-lg">✓</span>
-      <p className="text-sm font-bold text-white">YouTube Music connected successfully!</p>
+    <div className="fixed top-4 right-4 z-50 flex items-center gap-3 rounded-xl border border-brand-spotify/30 bg-brand-spotify/10 glass-elevated px-4 py-3 shadow-xl animate-fade-in-up">
+      <span className="text-brand-spotify text-sm font-bold">Connected</span>
+      <p className="text-xs font-medium text-white">YouTube Music linked</p>
     </div>
   );
 }
@@ -75,7 +69,6 @@ function DashboardContent() {
   const [session, setSession] = useState<LocalSession | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
 
-  // Step 1: Capture token from redirect URL or restore from localStorage
   useEffect(() => {
     const urlToken = searchParams.get("session_token");
     const urlUserId = searchParams.get("user_id");
@@ -83,58 +76,34 @@ function DashboardContent() {
     const urlEmail = searchParams.get("user_email");
 
     if (urlToken && urlUserId) {
-      // Fresh login — store token and user info
       localStorage.setItem("merge_session_token", urlToken);
-      localStorage.setItem("merge_user", JSON.stringify({
-        id: urlUserId,
-        name: urlName || urlEmail?.split("@")[0] || "User",
-        email: urlEmail || "",
-      }));
-      setSession({
-        user: {
-          id: urlUserId,
-          name: urlName || urlEmail?.split("@")[0] || "User",
-          email: urlEmail || "",
-        },
-      });
-      // Clean URL
+      const name = urlName ? decodeURIComponent(urlName) : urlEmail?.split("@")[0] || "User";
+      const email = urlEmail ? decodeURIComponent(urlEmail) : "";
+      localStorage.setItem("merge_user", JSON.stringify({ id: urlUserId, name, email }));
+      setSession({ user: { id: urlUserId, name, email } });
       window.history.replaceState({}, "", "/dashboard");
       setSessionReady(true);
       return;
     }
 
-    // Try restoring from localStorage
     const storedToken = localStorage.getItem("merge_session_token");
     const storedUser = localStorage.getItem("merge_user");
     if (storedToken && storedUser) {
-      try {
-        setSession({ user: JSON.parse(storedUser) });
-        setSessionReady(true);
-        return;
-      } catch {
-        // corrupted — fall through
-      }
+      try { setSession({ user: JSON.parse(storedUser) }); setSessionReady(true); return; } catch { /* fall through */ }
     }
 
-    // Fall back to Neon Auth session
     if (!neonPending) {
       if (neonSession?.user) {
         setSession({ user: neonSession.user as LocalSession["user"] });
-        setSessionReady(true);
-      } else {
-        setSessionReady(true); // no session found — will redirect
       }
+      setSessionReady(true);
     }
   }, [searchParams, neonPending, neonSession]);
 
-  // Step 2: Redirect if not authenticated
   useEffect(() => {
-    if (sessionReady && !session) {
-      router.push("/login");
-    }
+    if (sessionReady && !session) router.push("/login");
   }, [sessionReady, session, router]);
 
-  // Step 3: Fetch blends
   const fetchBlends = useCallback(async (userId: string) => {
     try {
       const token = localStorage.getItem("merge_session_token");
@@ -143,74 +112,64 @@ function DashboardContent() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      setBlends(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+      setBlends(await res.json());
+    } catch { /* silent */ } finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
-    if (session?.user.id) {
-      fetchBlends(session.user.id);
-    }
+    if (session?.user.id) fetchBlends(session.user.id);
   }, [session?.user.id, fetchBlends]);
 
   if (!sessionReady || !session) {
-    return <div className="flex h-[50vh] items-center justify-center animate-pulse text-brand-ytmusic">Loading Dashboard...</div>;
+    return <div className="flex h-[50vh] items-center justify-center animate-pulse text-text-muted">Loading...</div>;
   }
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      {/* useSearchParams must be inside Suspense */}
-      <Suspense fallback={null}>
-        <YtmConnectedToast />
-      </Suspense>
+    <div className="space-y-6 md:space-y-8 animate-fade-in-up">
+      <Suspense fallback={null}><YtmConnectedToast /></Suspense>
 
-      <div className="flex items-center justify-between pb-6 border-b border-white/5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-display font-black text-white">Dashboard</h1>
-          <p className="text-text-secondary mt-1">Welcome back, {session.user.name}</p>
+          <h1 className="text-display-lg font-display text-white">Dashboard</h1>
+          <p className="text-xs text-text-muted mt-1">Welcome, {session.user.name}</p>
         </div>
-        <Link href="/blend/create" className="px-6 py-3 rounded-full bg-white text-black font-bold hover:scale-105 transition shadow-lg">
+        <Link href="/blend/create" className="hidden sm:inline-flex px-5 py-2.5 rounded-full bg-white text-black font-bold text-xs hover:scale-105 transition shadow-lg">
           + New Blend
         </Link>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <h2 className="text-2xl font-display font-bold text-white">Your Blends</h2>
+      {/* Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Blends */}
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-text-secondary uppercase tracking-wider">Your Blends</h2>
           {loading ? (
-            <div className="animate-pulse">
-              <div className="h-24 bg-surface-highlight/20 rounded-2xl w-full" />
-            </div>
+            <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-20 bg-surface-highlight/20 rounded-xl animate-pulse" />)}</div>
           ) : blends.length === 0 ? (
-            <div className="bg-surface-highlight/20 border border-white/5 rounded-2xl p-10 text-center space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-full bg-brand-ytmusic/10 flex items-center justify-center text-4xl">🎵</div>
-              <div>
-                <h3 className="text-white font-bold text-lg mb-1">No blends yet</h3>
-                <p className="text-sm text-text-muted max-w-xs mx-auto">Connect YouTube Music and create your first blend to see your shared taste with a friend.</p>
+            <div className="glass-surface rounded-2xl p-8 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-ytgradient1/20 to-brand-ytmusic/20 flex items-center justify-center text-3xl">
+                🎵
               </div>
-              <Link href="/blend/create" className="inline-flex px-6 py-3 rounded-full bg-white text-black font-bold text-sm hover:scale-105 transition shadow-lg">
-                Create your first blend
+              <div>
+                <h3 className="text-white font-bold text-sm mb-1">No blends yet</h3>
+                <p className="text-xs text-text-muted max-w-xs mx-auto">Create your first blend to see your combined taste.</p>
+              </div>
+              <Link href="/blend/create" className="inline-flex px-5 py-2.5 rounded-full bg-white text-black font-bold text-xs hover:scale-105 transition shadow-lg">
+                Create blend
               </Link>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="space-y-2">
               {blends.map((blend) => (
-                <Link href={`/blend/${blend.id}`} key={blend.id} className="group glass-panel border border-white/5 rounded-2xl p-5 hover:border-brand-ytmusic transition-colors relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-brand-ytmusic/5 mix-blend-screen rounded-full blur-[30px] group-hover:bg-brand-ytmusic/20 transition-all opacity-50 pointer-events-none" />
-                  <div className="flex justify-between items-center relative z-10">
-                    <div>
-                      <h4 className="font-bold text-white text-lg">{blend.participant_a_name} + {blend.participant_b_name}</h4>
-                      <p className="text-xs text-text-muted mt-1">{new Date(blend.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-brand-ytmusic font-black text-2xl">{(blend.compatibility_score ?? 0).toFixed(0)}%</span>
-                      <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">Match</p>
-                    </div>
+                <Link href={`/blend/${blend.id}`} key={blend.id} className="group glass-surface rounded-xl p-4 flex justify-between items-center hover:border-white/10 transition-all">
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-white text-sm truncate">{blend.participant_a_name} + {blend.participant_b_name}</h4>
+                    <p className="text-[11px] text-text-muted mt-0.5">{new Date(blend.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <span className="text-brand-ytmusic font-black text-xl">{(blend.compatibility_score ?? 0).toFixed(0)}%</span>
+                    <p className="text-[9px] uppercase font-bold tracking-widest text-text-muted">Match</p>
                   </div>
                 </Link>
               ))}
@@ -218,19 +177,29 @@ function DashboardContent() {
           )}
         </div>
 
-        <div className="space-y-6">
-          <SectionCard eyebrow="YouTube Music" title="Connection">
+        {/* Connection */}
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-text-secondary uppercase tracking-wider">YouTube Music</h2>
+          <SectionCard>
             <ConnectYouTubeMusic />
           </SectionCard>
         </div>
       </div>
+
+      {/* Mobile FAB */}
+      <Link
+        href="/blend/create"
+        className="fixed bottom-20 right-4 z-40 sm:hidden w-14 h-14 rounded-full bg-gradient-to-br from-brand-ytgradient1 to-brand-ytmusic flex items-center justify-center shadow-brand-glow text-white text-2xl font-bold hover:scale-110 transition-transform"
+      >
+        +
+      </Link>
     </div>
   );
 }
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="flex h-[50vh] items-center justify-center animate-pulse text-brand-ytmusic">Loading Dashboard...</div>}>
+    <Suspense fallback={<div className="flex h-[50vh] items-center justify-center animate-pulse text-text-muted">Loading...</div>}>
       <DashboardContent />
     </Suspense>
   );

@@ -65,7 +65,7 @@ export function PlaylistPicker({ onSelectionChange, selectedIds, includeLikedSon
         <button
           type="button"
           onClick={() => onIncludeLikedSongsChange(!includeLikedSongs)}
-          className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+          className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all touch-target ${
             includeLikedSongs
               ? "border-brand-ytmusic bg-brand-ytmusic/10"
               : "border-white/10 bg-surface-highlight/20 hover:border-white/30"
@@ -91,7 +91,7 @@ export function PlaylistPicker({ onSelectionChange, selectedIds, includeLikedSon
               type="button"
               disabled={disabled}
               onClick={() => togglePlaylist(pl.id)}
-              className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+              className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all touch-target ${
                 selected
                   ? "border-brand-ytmusic bg-brand-ytmusic/10"
                   : disabled

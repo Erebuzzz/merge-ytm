@@ -85,9 +85,9 @@ export default function InviteJoinPage({ params }: { params: Promise<{ code: str
 
   if (loading) {
     return (
-       <div className="max-w-2xl mx-auto mt-12 animate-pulse space-y-6">
-         <div className="h-32 bg-surface-highlight/30 rounded-[30px]" />
-         <div className="h-[400px] bg-surface-highlight/20 rounded-[30px]" />
+       <div className="max-w-2xl mx-auto mt-6 md:mt-12 animate-pulse space-y-4">
+         <div className="h-28 bg-surface-highlight/30 rounded-2xl" />
+         <div className="h-[300px] md:h-[400px] bg-surface-highlight/20 rounded-2xl" />
        </div>
     );
   }
@@ -109,12 +109,12 @@ export default function InviteJoinPage({ params }: { params: Promise<{ code: str
 
   if (!localUser) {
     return (
-      <div className="max-w-xl mx-auto mt-12">
-        <SectionCard eyebrow="You've been invited!" title={`${invite.creatorName} wants to blend with you 🎵`}>
-          <p className="text-text-secondary mb-8 mt-2">
-            Log in to Merge to connect your YouTube Music account and see what your combined taste looks like.
+      <div className="max-w-xl mx-auto mt-6 md:mt-12">
+        <SectionCard eyebrow="You've been invited!" title={`${invite.creatorName} wants to blend with you`}>
+          <p className="text-text-secondary text-sm mb-6 mt-2">
+            Log in to connect your YouTube Music and see what your combined taste looks like.
           </p>
-          <Link href={`/login?callbackUrl=/invite/${code}`} className="block w-full text-center px-8 py-4 rounded-full bg-brand-ytmusic text-black font-bold hover:scale-105 transition-all shadow-xl">
+          <Link href={`/login?callbackUrl=/invite/${code}`} className="block w-full text-center px-6 py-3.5 rounded-full bg-gradient-to-r from-brand-ytgradient1 to-brand-ytmusic text-white font-bold hover:scale-105 transition-all shadow-brand-glow touch-target">
              Log in to Join
           </Link>
         </SectionCard>
@@ -123,7 +123,7 @@ export default function InviteJoinPage({ params }: { params: Promise<{ code: str
   }
 
   return (
-    <div className="max-w-xl mx-auto mt-12 animate-fade-in-up">
+    <div className="max-w-xl mx-auto mt-6 md:mt-12 animate-fade-in-up">
       <SectionCard eyebrow={`Invited by ${invite.creatorName}`} title="Add your music">
         <p className="text-sm text-text-secondary mb-6">
           Connect your YouTube Music account or paste your playlist links below to complete the blend.

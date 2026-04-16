@@ -41,19 +41,17 @@ export function ConnectYouTubeMusic({ onStatusChange }: Props) {
 
   if (loading) {
     return (
-      <div className="h-12 rounded-xl bg-surface-highlight/30 animate-pulse" />
+      <div className="h-12 rounded-xl bg-surface-highlight/30 animate-pulse touch-target" />
     );
   }
 
   if (status?.connected) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-brand-ytmusic/30 bg-brand-ytmusic/5 px-4 py-3">
-        <span className="text-brand-ytmusic text-lg">✓</span>
-        <div className="flex-1">
+      <div className="flex items-center gap-3 rounded-xl border border-brand-spotify/30 bg-brand-spotify/5 px-4 py-3 touch-target">
+        <span className="w-6 h-6 rounded-full bg-brand-spotify/20 flex items-center justify-center text-brand-spotify text-xs font-bold shrink-0">✓</span>
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white">YouTube Music connected</p>
-          <p className="text-xs text-text-muted">
-            via Google account
-          </p>
+          <p className="text-[11px] text-text-muted">via Google account</p>
         </div>
       </div>
     );
@@ -64,7 +62,7 @@ export function ConnectYouTubeMusic({ onStatusChange }: Props) {
       type="button"
       onClick={handleConnect}
       disabled={connecting}
-      className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white px-4 py-3 text-sm font-bold text-black transition-all hover:scale-[1.02] hover:shadow-lg disabled:opacity-60 disabled:hover:scale-100"
+      className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white px-4 py-3.5 text-sm font-bold text-black transition-all hover:scale-[1.02] hover:shadow-lg disabled:opacity-60 disabled:hover:scale-100 touch-target"
     >
       {/* Google G icon */}
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

@@ -161,70 +161,64 @@ export function ResultsPanel({ blend }: ResultsPanelProps) {
     <div className="space-y-8 animate-fade-in-up">
       {/* Feedback submission toast */}
       {feedbackToast && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-brand-ytmusic/30 bg-brand-ytmusic/10 px-5 py-3 shadow-xl animate-fade-in-up">
-          <span className="text-brand-ytmusic text-lg">✓</span>
-          <p className="text-sm font-bold text-white">Thanks for the feedback!</p>
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-3 rounded-xl border border-brand-spotify/30 bg-brand-spotify/10 glass-elevated px-4 py-3 shadow-xl animate-fade-in-up max-w-[90vw] sm:max-w-sm">
+          <span className="text-brand-spotify text-sm font-bold">Thanks!</span>
+          <p className="text-xs font-medium text-white">Feedback recorded</p>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-end gap-6 relative z-10 glass-panel p-8 rounded-[30px] border-l-4 border-l-brand-ytgradient2">
-        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-brand-ytgradient1 via-brand-ytmusic to-[#121212] shadow-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center mix-blend-overlay opacity-50">
-            <div className="w-full h-full bg-[radial-gradient(circle_at_center,white,transparent_80%)] mix-blend-color-dodge" />
-          </div>
-          <span className="text-6xl font-display font-black text-white mix-blend-overlay">{blend.compatibilityScore.toFixed(0)}%</span>
+      <div className="flex flex-col md:flex-row items-start md:items-end gap-5 md:gap-6 relative z-10 glass-panel p-5 md:p-8 rounded-2xl md:rounded-[30px] border-l-2 border-l-brand-ytgradient2">
+        <div className="w-full md:w-40 h-32 md:h-40 rounded-xl md:rounded-2xl bg-gradient-to-br from-brand-ytgradient1 via-brand-ytmusic to-[#121212] shadow-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,white,transparent_80%)] mix-blend-color-dodge opacity-30" />
+          <span className="text-5xl md:text-6xl font-display font-black text-white">{blend.compatibilityScore.toFixed(0)}%</span>
         </div>
-        <div className="flex-1 text-white">
-          <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Blend Playlist</p>
-          <h1 className="text-5xl md:text-6xl font-display font-black mb-4 tracking-tight drop-shadow-md">
+        <div className="flex-1 text-white min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Blend Playlist</p>
+          <h1 className="text-display-lg md:text-display-xl font-display mb-3 tracking-tight truncate">
             {blend.participants.userA.name} + {blend.participants.userB.name}
           </h1>
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm font-medium text-text-secondary flex items-center gap-2">
-              <span className="text-brand-ytmusic font-semibold">{blend.compatibilityScore.toFixed(1)}% Match</span>
-              • {blend.sections.reduce((acc, curr) => acc + curr.tracks.length, 0)} songs
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <p className="text-xs md:text-sm font-medium text-text-secondary">
+              <span className="text-brand-ytmusic font-semibold">{blend.compatibilityScore.toFixed(1)}%</span>
+              {" "}Match &bull; {blend.sections.reduce((acc, curr) => acc + curr.tracks.length, 0)} songs
             </p>
-            {/* Regenerate button */}
             <button
               type="button"
               onClick={handleRegenerate}
               disabled={regenerating}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold text-text-muted hover:text-white hover:border-white/30 transition-all disabled:opacity-40"
-              title="Re-run blend with updated feedback"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-bold text-text-muted hover:text-white hover:border-white/30 transition-all disabled:opacity-40 touch-target"
             >
               <span className={regenerating ? "animate-spin" : ""}>↻</span>
-              {regenerating ? "Regenerating..." : "Regenerate"}
+              {regenerating ? "..." : "Regen"}
             </button>
-            {/* Share link */}
             <button
               type="button"
               onClick={handleCopyShareLink}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold text-text-muted hover:text-white hover:border-white/30 transition-all"
-              title="Copy shareable link"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[11px] font-bold text-text-muted hover:text-white hover:border-white/30 transition-all touch-target"
             >
-              {shareCopied ? "✓ Copied!" : "🔗 Share"}
+              {shareCopied ? "Copied" : "Share"}
             </button>
           </div>
         </div>
       </div>
 
       {/* Diagnostics + Export */}
-      <div className="grid gap-8 xl:grid-cols-[1.35fr_0.9fr]">
+      <div className="grid gap-6 md:gap-8 xl:grid-cols-[1.35fr_0.9fr]">
         <SectionCard eyebrow="Diagnostics" title="Compatibility Breakdown">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
             {[
               { label: "Shared", value: blend.diagnostics.commonCount ?? 0, color: "text-brand-ytmusic" },
-              { label: `${blend.participants.userA.name} Pool`, value: blend.diagnostics.userACount ?? 0, color: "text-brand-ytgradient1" },
-              { label: `${blend.participants.userB.name} Pool`, value: blend.diagnostics.userBCount ?? 0, color: "text-brand-ytgradient2" },
+              { label: `${blend.participants.userA.name}`, value: blend.diagnostics.userACount ?? 0, color: "text-brand-ytgradient1" },
+              { label: `${blend.participants.userB.name}`, value: blend.diagnostics.userBCount ?? 0, color: "text-brand-ytgradient2" },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl bg-surface-highlight/40 border border-white/5 px-5 py-5 text-center flex flex-col justify-center transition-all hover:bg-surface-highlight/60">
-                <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${stat.color}`}>{stat.label}</p>
-                <p className="text-4xl font-display font-bold text-white tracking-tighter">{String(stat.value)}</p>
+              <div key={stat.label} className="rounded-xl md:rounded-2xl bg-surface-highlight/40 border border-white/5 px-3 py-3 md:px-5 md:py-5 text-center flex flex-col justify-center">
+                <p className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest mb-1 ${stat.color} truncate`}>{stat.label}</p>
+                <p className="text-2xl md:text-4xl font-display font-bold text-white tracking-tighter">{String(stat.value)}</p>
               </div>
             ))}
           </div>
-          <div className="mt-6 rounded-2xl bg-surface-elevated px-5 py-4 text-xs leading-relaxed text-text-secondary border-l-2 border-l-brand-ytmusic">
+          <div className="mt-4 md:mt-6 rounded-xl md:rounded-2xl bg-surface-elevated px-4 py-3 md:px-5 md:py-4 text-xs leading-relaxed text-text-secondary border-l-2 border-l-brand-ytmusic">
             Shared taste anchors the playlist. Side sections pull in unique tracks ranked by artist similarity and diversity.
           </div>
         </SectionCard>

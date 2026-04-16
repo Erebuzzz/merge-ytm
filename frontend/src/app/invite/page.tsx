@@ -53,7 +53,7 @@ export default function InviteCreatePage() {
 
   if (inviteUrl) {
     return (
-      <div className="max-w-xl mx-auto mt-12 animate-fade-in-up">
+      <div className="max-w-xl mx-auto mt-6 md:mt-12 animate-fade-in-up">
         <SectionCard eyebrow="Invite Created" title="Share with your friend">
           <div className="space-y-6">
             <p className="text-text-secondary text-sm">
@@ -62,15 +62,15 @@ export default function InviteCreatePage() {
             <div className="p-4 rounded-xl bg-surface-highlight/40 border border-white/10 break-all text-brand-spotify font-medium">
               {inviteUrl}
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => navigator.clipboard.writeText(inviteUrl)}
-                className="flex-1 rounded-full px-6 py-3 bg-white text-black font-bold text-sm transition hover:scale-105"
+                className="flex-1 rounded-full px-6 py-3 bg-white text-black font-bold text-sm transition hover:scale-105 touch-target"
               >
                 Copy Link
               </button>
-              <Link href="/dashboard" className="flex-1 rounded-full px-6 py-3 bg-surface-elevated text-white font-bold text-sm transition hover:bg-surface-border text-center">
-                Back to Dashboard
+              <Link href="/dashboard" className="flex-1 rounded-full px-6 py-3 bg-surface-elevated text-white font-bold text-sm transition hover:bg-surface-border text-center touch-target">
+                Dashboard
               </Link>
             </div>
           </div>
@@ -81,13 +81,13 @@ export default function InviteCreatePage() {
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in-up">
-      {/* Mode Switcher */}
-      <div className="flex border-b border-surface-border mb-8">
-        <Link href="/blend/create" className="px-6 py-3 text-text-muted hover:text-white transition font-medium text-sm">
+      {/* Pill tab switcher */}
+      <div className="flex gap-1 p-1 rounded-xl bg-surface-highlight/50 w-fit mb-6 md:mb-8">
+        <Link href="/blend/create" className="px-4 py-2 rounded-lg text-text-muted hover:text-white transition font-medium text-xs">
           Paste Playlists
         </Link>
-        <div className="px-6 py-3 border-b-2 border-brand-ytmusic text-white font-bold text-sm">
-          Send Invite Link
+        <div className="px-4 py-2 rounded-lg bg-surface-elevated text-white font-bold text-xs shadow-sm">
+          Invite Link
         </div>
       </div>
 
