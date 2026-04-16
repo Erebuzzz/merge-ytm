@@ -28,8 +28,14 @@ if settings.redis_url:
 
     if settings.redis_url.startswith("rediss://"):
         celery_app.conf.update(
-            broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
-            redis_backend_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+            broker_use_ssl={
+                "ssl_cert_reqs": ssl.CERT_REQUIRED,
+                "ssl_ca_certs": "/etc/ssl/certs/ca-certificates.crt",
+            },
+            redis_backend_use_ssl={
+                "ssl_cert_reqs": ssl.CERT_REQUIRED,
+                "ssl_ca_certs": "/etc/ssl/certs/ca-certificates.crt",
+            },
         )
 
     sentry_dsn = os.getenv("SENTRY_DSN")
