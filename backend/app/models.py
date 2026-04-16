@@ -25,7 +25,7 @@ class User(Base):
     __tablename__ = "user"
     __table_args__ = {"schema": "neon_auth"}
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True)
     name: Mapped[str] = mapped_column(String(80))
     email: Mapped[str] = mapped_column(String, unique=True)
     emailVerified: Mapped[bool] = mapped_column(Boolean)
