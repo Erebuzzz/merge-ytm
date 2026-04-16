@@ -44,11 +44,27 @@ class YTMusicService:
     def _build_client(self) -> tuple[YTMusic, str | None]:
         temp_path: str | None = None
         if self.auth_headers:
+            # Backward-compatible cleanup:
+            # - Older stored OAuth payloads may include `id_token`, which ytmusicapi's RefreshingToken rejects.
+            # - Some payloads have `expires_in` (relative seconds) but not `expires_at` (unix ts).
+            sanitized = dict(self.auth_headers)
+            if _is_oauth_credentials(sanitized):
+                sanitized.pop("id_token", None)
+                sanitized.pop("idToken", None)
+                if "expires_at" not in sanitized and "expires_in" in sanitized:
+                    try:
+                        import time
+
+                        sanitized["expires_at"] = int(time.time()) + int(sanitized["expires_in"])
+                    except Exception:
+                        # If parsing fails, leave as-is; ytmusicapi will error and we surface it.
+                        pass
+
             handle, temp_path = tempfile.mkstemp(suffix=".json")
             with os.fdopen(handle, "w", encoding="utf-8") as temp_file:
-                json.dump(self.auth_headers, temp_file)
+                json.dump(sanitized, temp_file)
 
-            if _is_oauth_credentials(self.auth_headers) and settings.google_client_id:
+            if _is_oauth_credentials(sanitized) and settings.google_client_id:
                 # OAuth path — ytmusicapi handles token refresh automatically
                 oauth_creds = OAuthCredentials(
                     client_id=settings.google_client_id,
