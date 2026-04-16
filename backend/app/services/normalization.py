@@ -74,6 +74,14 @@ def deduplicate_tracks(tracks: list[TrackPayload], threshold: int = 85) -> list[
     return deduplicated
 
 
+_MUSIC_VIDEO_TYPES = {
+    "MUSIC_VIDEO_TYPE_ATV",           # audio track (album/single)
+    "MUSIC_VIDEO_TYPE_OMV",           # official music video
+    "MUSIC_VIDEO_TYPE_UGC",           # user-generated (covers, remixes)
+    "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC",
+}
+
+
 def track_from_ytmusic(item: dict[str, Any], source: str | None = None) -> TrackPayload | None:
     title = item.get("title")
     if not title:
@@ -81,6 +89,13 @@ def track_from_ytmusic(item: dict[str, Any], source: str | None = None) -> Track
 
     video_id = item.get("videoId")
     if not video_id:  # Req 6.3: skip tracks missing videoId
+        return None
+
+    # Filter non-music items (shorts, podcasts, regular videos).
+    # ytmusicapi tags real music with a videoType from _MUSIC_VIDEO_TYPES.
+    # If the field is present but not a known music type, skip the item.
+    video_type = item.get("videoType")
+    if video_type and video_type not in _MUSIC_VIDEO_TYPES:
         return None
 
     artists = item.get("artists") or []

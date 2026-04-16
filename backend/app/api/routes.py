@@ -199,7 +199,21 @@ def youtube_oauth_callback(
         db.add(user)
         db.flush()
 
-    user.encrypted_auth = encrypt_auth_payload(token_data)
+    # Build the credential dict that ytmusicapi's RefreshingToken expects.
+    # Google returns `expires_in` (seconds); ytmusicapi needs `expires_at` (unix ts).
+    # Strip `id_token` and other fields that RefreshingToken rejects as **kwargs.
+    import time
+    ytm_creds = {
+        "access_token": token_data["access_token"],
+        "refresh_token": token_data.get("refresh_token", ""),
+        "token_type": token_data.get("token_type", "Bearer"),
+        "scope": token_data.get("scope", ""),
+    }
+    expires_in = token_data.get("expires_in")
+    if expires_in:
+        ytm_creds["expires_at"] = int(time.time()) + int(expires_in)
+
+    user.encrypted_auth = encrypt_auth_payload(ytm_creds)
     user.auth_uploaded_at = now_ts
     user.auth_method = "oauth"
 
