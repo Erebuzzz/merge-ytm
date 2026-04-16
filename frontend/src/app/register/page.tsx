@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { getYouTubeAuthUrl } from "@/lib/api";
+
+const OAUTH_ERRORS: Record<string, string> = {
+  access_denied: "You cancelled the Google sign-in. Please try again.",
+  token_exchange_failed: "Google sign-in failed — the authorisation code expired. Please try again.",
+  missing_id_token: "Google did not return identity info. Please try again.",
+  invalid_id_token: "Google returned an invalid token. Please try again.",
+  email_not_provided: "Your Google account did not share an email address. Please allow email access and try again.",
+};
 
 function GoogleIcon() {
   return (
@@ -14,9 +23,18 @@ function GoogleIcon() {
   );
 }
 
-export default function RegisterPage() {
+function RegisterContent() {
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const errorCode = searchParams.get("error");
+    if (errorCode) {
+      setError(OAUTH_ERRORS[errorCode] ?? `Sign-in error: ${errorCode}. Please try again.`);
+      window.history.replaceState({}, "", "/register");
+    }
+  }, [searchParams]);
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
@@ -28,8 +46,8 @@ export default function RegisterPage() {
       } else {
         throw new Error("Unable to retrieve authorization URL.");
       }
-    } catch (err: any) {
-      setError(err?.message || "Google sign-in failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
       setGoogleLoading(false);
     }
   }
@@ -67,5 +85,20 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[70vh]">
+        <div className="glass-panel w-full max-w-md p-8 rounded-3xl border border-white/5 shadow-2xl animate-pulse">
+          <div className="h-8 bg-surface-highlight/30 rounded-xl mb-4" />
+          <div className="h-14 bg-surface-highlight/30 rounded-xl" />
+        </div>
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 }

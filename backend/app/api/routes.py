@@ -77,17 +77,21 @@ def get_youtube_auth_url() -> dict[str, str]:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google OAuth is not configured.")
 
     state = secrets.token_urlsafe(16)
-    scope = "https://www.googleapis.com/auth/youtube openid email profile"
-    auth_url = (
-        f"https://accounts.google.com/o/oauth2/v2/auth"
-        f"?client_id={settings.google_client_id}"
-        f"&redirect_uri={settings.youtube_oauth_redirect_uri}"
-        f"&response_type=code"
-        f"&scope={scope}"
-        f"&access_type=offline"
-        f"&prompt=consent"
-        f"&state={state}"
-    )
+    # Login only needs identity scopes. YouTube Music access is requested separately
+    # on the dashboard after login so users aren't blocked by Google's unverified-app
+    # screen on their first sign-in.
+    scope = "openid email profile https://www.googleapis.com/auth/youtube"
+    from urllib.parse import urlencode
+    params = urlencode({
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.youtube_oauth_redirect_uri,
+        "response_type": "code",
+        "scope": scope,
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": state,
+    })
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
     return {"url": auth_url}
 
 
@@ -179,7 +183,15 @@ def youtube_oauth_callback(
 
     # Pass token via URL so frontend can store it in localStorage.
     # Cross-domain cookies (Render→Vercel) are blocked by SameSite policy.
-    redirect_url = f"{frontend}/dashboard?session_token={session_token}&user_id={user.id}&user_name={user.name or ''}&user_email={user.email}"
+    # URL-encode name/email so spaces and special chars don't corrupt the query string.
+    from urllib.parse import quote
+    redirect_url = (
+        f"{frontend}/dashboard"
+        f"?session_token={session_token}"
+        f"&user_id={user.id}"
+        f"&user_name={quote(user.name or '', safe='')}"
+        f"&user_email={quote(user.email, safe='')}"
+    )
     return RedirectResponse(url=redirect_url)
 
 
